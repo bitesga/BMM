@@ -1,5 +1,7 @@
 # BMM - Brawl Stars Matchmaking Bot
 
+![BMM Logo](https://imgur.com/QUSZ6l1.png)
+
 A Discord bot designed to facilitate random ranked matches in Brawl Stars, providing matchmaking, leaderboards, and map management features.
 
 ## Features
