@@ -1,0 +1,11 @@
+{
+    "rankSystem": {
+        "name" : "ℹ️ Rank System",
+        "value" : "🟤 **Bronze**\n- **1** (0-50): 🟢 +20 (+3 WS > 1) / 🔴 -1\n- **2** (50-100): 🟢 +19 (+3 WS > 1) / 🔴 -2\n- **3** (100-150): 🟢 +18 (+3 WS > 1) / 🔴 -3\n- **4** (150-200): 🟢 +17 (+3 WS > 1) / 🔴 -4\n- **5** (200-250): 🟢 +16 (+3 WS > 1) / 🔴 -5\n\n ⚪ **Silver**\n- **1** (250-300): 🟢 +15 (+2 WS > 2) / 🔴 -6\n- **2** (300-350): 🟢 +14 (+2 WS > 2) / 🔴 -7\n- **3** (350-400): 🟢 +13 (+2 WS > 2) / 🔴 -8\n- **4** (400-450): 🟢 +12 (+2 WS > 2) / 🔴 -9\n- **5** (450-500): 🟢 +11 (+2 WS > 2) / 🔴 -10\n\n 🟡 **Gold**\n- **1** (500-550): 🟢 +10 (+1 WS > 3) / 🔴 -10\n- **2** (550-600): 🟢 +9 (+1 WS > 3) / 🔴 -10\n- **3** (600-650): 🟢 +8 (+1 WS > 3) / 🔴 -10\n- **4** (650-700): 🟢 +7 (+1 WS > 3) / 🔴 -10\n- **5** (700-750): 🟢 +6 (+1 WS > 3) / 🔴 -10\n\n 🟣 **Master**\n- **1** (750-800): 🟢 +5 (+1 WS > 3) / 🔴 -10\n- **2** (800-850): 🟢 +4 (+1 WS > 3) / 🔴 -10\n- **3** (850-900): 🟢 +3 (+1 WS > 3) / 🔴 -10\n- **4** (900-950): 🟢 +2 (+1 WS > 3) / 🔴 -10\n- **5** (950-1000): 🟢 +1 (+1 WS > 3) / 🔴 -10\n\n 🏆 **Champ**\n- **Champ**: 🟢 +10 / 🔴 -10\n\n🔵 **Starplayer Bonus**\n- :blue_circle: **Win Starplayer**: +1 (+2 on Double Weekend)\n- :purple_circle: **Lose Starplayer**: +3 (+6 on Double Weekend)"
+    },
+    "pointSystem": {
+        "name" : "ℹ️ Point System",
+        "value" : "### \n\n🔴 **Negative Points**\n- :red_circle: **1-2**: -14\n- :red_circle: **0-2**: -20\n\n🟢 **Positive Points**\n- :green_circle: **2-1**: +13 (+26 on Double Weekend)\n- :green_circle: **2-0**: +19 (+38 on Double Weekend)\n\n🔵 **Starplayer Bonus**\n- :blue_circle: **Win Starplayer**: +1 (+2 on Double Weekend)\n- :purple_circle: **Lose Starplayer**: +3 (+6 on Double Weekend)"
+    } 
+  }
+  

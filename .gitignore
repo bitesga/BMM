@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+cogs/__pycache__/
+*.pyc
+
+
+# Logs
+*.log
+
+# Sensitive files
+admins.json
+allowed.json
+blockedAdmins.json
+data/env.json
+data/sheet_secret.json
