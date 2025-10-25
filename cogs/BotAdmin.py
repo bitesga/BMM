@@ -93,7 +93,7 @@ class BotAdmin(commands.Cog):
      
      
   @guild_only
-  @app_commands.command(description="add a map to the mappool")
+  @app_commands.command(description="block an admin from using admin commands")
   async def admin_block(self, interaction: discord.Interaction, user: discord.User):
     if interaction.user.id not in botAdmins:
       if interaction.user.guild_permissions.administrator:
@@ -120,7 +120,7 @@ class BotAdmin(commands.Cog):
      
   
   @guild_only
-  @app_commands.command(description="removes a map from mappool")
+  @app_commands.command(description="remove an admin from the block list")
   async def admin_block_remove(self, interaction: discord.Interaction, user: discord.User):
     if interaction.user.id not in botAdmins:
       if interaction.user.guild_permissions.administrator:
@@ -147,7 +147,7 @@ class BotAdmin(commands.Cog):
      
      
   @guild_only
-  @app_commands.command(description="add a map to the mappool")
+  @app_commands.command(description="add a user to the admin list")
   async def admin_add(self, interaction: discord.Interaction, user: discord.User):
     if interaction.user.id not in botAdmins:
       if interaction.user.guild_permissions.administrator:
@@ -174,7 +174,7 @@ class BotAdmin(commands.Cog):
      
      
   @guild_only
-  @app_commands.command(description="removes a map from mappool")
+  @app_commands.command(description="remove a user from the admin list")
   async def admin_remove(self, interaction: discord.Interaction, user: discord.User):
     if interaction.user.id not in botAdmins:
       if interaction.user.guild_permissions.administrator:
@@ -200,7 +200,7 @@ class BotAdmin(commands.Cog):
      await self.__handle_error("admin_remove",interaction,error)      
         
 
-  @app_commands.command(description="dcat")
+  @app_commands.command(description="delete category and all its channels")
   async def dcat(self, interaction: discord.Interaction, name: str):
       if interaction.user.id not in botAdmins:
           return await interaction.response.send_message(content="⛔ You are not allowed to use this command.")
@@ -220,7 +220,7 @@ class BotAdmin(commands.Cog):
      await self.__handle_error("dcat",interaction,error)
      
      
-  @app_commands.command(description="wl")
+  @app_commands.command(description="whitelist a server")
   async def wl(self, interaction: discord.Interaction, id: str, name: str):
       if interaction.user.id not in botAdmins:
           return await interaction.response.send_message(content="⛔ You are not allowed to use this command.")
@@ -244,7 +244,7 @@ class BotAdmin(commands.Cog):
      await self.__handle_error("wl",interaction,error)
      
   
-  @app_commands.command(description="bl")
+  @app_commands.command(description="blacklist a server (remove from whitelist)")
   async def bl(self, interaction: discord.Interaction, id: str):
       if interaction.user.id not in botAdmins:
           return await interaction.response.send_message(content="⛔ You are not allowed to use this command.")
@@ -281,7 +281,7 @@ class BotAdmin(commands.Cog):
      await self.__handle_error("lock_mm",interaction,error)
 
     # Unlocks matchmaking
-  @app_commands.command(description="unlocks matchmaiking.")
+  @app_commands.command(description="unlock matchmaking")
   async def unlock_mm(self, interaction: discord.Interaction):
     if not interaction.user.id in botAdmins:
         return await interaction.response.send_message(content=f"⛔ You are not allowed to use this command.")
