@@ -15,7 +15,7 @@ fullMapList = fullMapList["list"]
 validModes = ["Gem Grab", "Brawl Ball", "Heist", "Wipeout", "Knockout", "Bounty", "Hot Zone", "Siege"]
 mapList = []
 for mapData in fullMapList:
-  if simplify(mapData["gameMode"]["name"]) in simplify(validModes):
+  if simplify(mapData["gameMode"]["name"]) in list(map(simplify, validModes)):
     mapList.append(mapData["name"])
     
     
@@ -62,7 +62,7 @@ class Maps(commands.Cog):
 
   @maps.error
   async def maps_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
-     await self.__handle_error("update_leaderboard",interaction,error)
+     await self.__handle_error("maps",interaction,error)
      
      
   # Delete player ID
@@ -141,7 +141,7 @@ class Maps(commands.Cog):
 
   @reset_maps.error
   async def reset_maps_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
-     await self.__handle_error("map_remove",interaction,error)
+     await self.__handle_error("reset_maps",interaction,error)
      
      
   async def __handle_error(self, function, interaction: discord.Interaction, error: app_commands.AppCommandError):
