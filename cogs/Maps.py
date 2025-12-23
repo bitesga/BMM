@@ -15,7 +15,7 @@ fullMapList = fullMapList["list"]
 validModes = ["Gem Grab", "Brawl Ball", "Heist", "Wipeout", "Knockout", "Bounty", "Hot Zone", "Siege"]
 mapList = []
 for mapData in fullMapList:
-  if mapData["gameMode"]["name"] in validModes:
+  if simplify(mapData["gameMode"]["name"]) in simplify(validModes):
     mapList.append(mapData["name"])
     
     
