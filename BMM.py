@@ -31,6 +31,7 @@ class BMM(commands.Bot):
   def getOverwrite(self, guild, role1, role2):
     return {
         guild.default_role: discord.PermissionOverwrite(read_messages=False),
+        self.user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
         role1: discord.PermissionOverwrite(read_messages=True, send_messages=False),
         role2: discord.PermissionOverwrite(read_messages=True, send_messages=False),
     }
@@ -259,7 +260,6 @@ class BMM(commands.Bot):
     
 
   async def on_ready(self):
-    self.logger.info("Bot rasiert alles")
     for f in os.listdir('./cogs'):
       if f.endswith('.py'):
         await bot.load_extension(f'cogs.{f[:-3]}')
