@@ -38,7 +38,7 @@ class Commands(commands.Cog):
      
   @guild_only
   @app_commands.command(description="starts matchmaking")
-  @app_commands.checks.cooldown(1, 60*5, key=lambda i: (i.user.id))
+  @app_commands.checks.cooldown(1, 60*5, key=lambda i: (i.user.id and i.user.id != 85342637082240))  # 5 minutes cooldown per user except for bot owner
   async def matchmaking(self, interaction: discord.Interaction, team_code: str):
     await interaction.response.defer(ephemeral=True)
 
