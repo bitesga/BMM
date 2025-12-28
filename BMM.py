@@ -77,6 +77,7 @@ class BMM(commands.Bot):
     # Only Read permission definieren
     onlyRead = {
       guild.default_role: discord.PermissionOverwrite(send_messages=False),
+      self.user: discord.PermissionOverwrite(send_messages=True)
     }
     
     # Kategorie finden
@@ -336,15 +337,17 @@ class BMM(commands.Bot):
     
     generalChannel = self.getGeneralChannel(guild)
     if not str(guild.id) in self.allowedGuilds:
-      await guild.leave()
       await generalChannel.send("This server did not buy this bot. Visit https://discord.gg/txfCgDfDDf to see the prices and contact the support. Until then, bye 👋")
       self.logger.info(f"Left unauthorized server: {guild.name}") 
+      await guild.leave()
       return 
     
     await asyncio.sleep(3)
       
     await generalChannel.send("Hi, please make sure to put my role 'Brawl Matchmaking' as high as possible in the role list, so that I can edit member roles.",
     file=discord.File(f"tutorialPhotos/rolelist.png"))
+    
+    await asyncio.sleep(3)
       
     # Matchmaking Kanäle erstellen 
     await self.getChannels(guild, create=True)
