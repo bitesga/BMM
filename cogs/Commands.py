@@ -18,7 +18,7 @@ from cogs.BotAdmin import resetPlayer
 
 
 # Dynamic cooldown implementation
-def dynamic_guild_cooldown(bot_owner_id: int = 85342637082240):
+def dynamic_guild_cooldown(bot_owner_id: int = 324607583841419276):
     cooldowns = {}  # Store cooldown data: {(guild_id, user_id): timestamp}
     
     async def predicate(interaction: discord.Interaction) -> bool:
