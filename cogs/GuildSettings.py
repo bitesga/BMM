@@ -126,6 +126,11 @@ class GuildSettings(commands.Cog):
         value=f"`{guild_options['eloBoundary']}` maximum elo difference for matchmaking",
         inline=False
     )
+    embed.add_field(
+        name="Matchmaking Cooldown",
+        value=f"`{guild_options.get('cooldown_mm', 120)}` seconds ({guild_options.get('cooldown_mm', 120) // 60} minutes)",
+        inline=False
+    )
 
     # Send the embed
     await interaction.response.send_message(embed=embed)
@@ -203,6 +208,25 @@ class GuildSettings(commands.Cog):
   async def elo_boundary_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
      await self.__handle_error("elo_boundary",interaction,error)
      
+
+  @guild_only
+  @app_commands.command(description="sets matchmaking cooldown in seconds")
+  async def set_mm_cooldown(self, interaction: discord.Interaction, cooldown_seconds: int):
+    if not (str(interaction.user.id) in self.bot.admins or interaction.user.guild_permissions.administrator) or str(interaction.user.id) in self.bot.blockedAdmins:
+        return await interaction.response.send_message(content=f"⛔ You are not allowed to use this command.")
+    
+    if cooldown_seconds < 0:
+        return await interaction.response.send_message(content="⛔ Cooldown must be a positive number.")
+    
+    guild_options = mongodb.findGuildOptions(interaction.guild.id)
+    guild_options["cooldown_mm"] = cooldown_seconds
+    mongodb.saveGuild(guild_options)
+    return await interaction.response.send_message(f"✅ Matchmaking cooldown set to {cooldown_seconds} seconds ({cooldown_seconds // 60} minutes)")
+
+  @set_mm_cooldown.error
+  async def set_mm_cooldown_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
+     await self.__handle_error("set_mm_cooldown",interaction,error)
+
 
   @guild_only
   @app_commands.command(description="sets next season reset day")

@@ -73,6 +73,7 @@ class General(commands.Cog):
 - `/matchchannel_mode` switches matches in #matches-running/threads
 - `/unlimited_lb` enables/disables unlimited lb (will send all players in leaderboard and not only top 50 per region)
 - `/elo_boundary` sets max elo difference to host
+- `/set_mm_cooldown` sets matchmaking cooldown duration in seconds
 - `/seperate_mm` enables/disables matchmaking seperation
 - `/seperate_mm_roles` enables/disables seperation by up to 6 roles
 - `/downward_joins` enables/disables higher level players joining lower mms

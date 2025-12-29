@@ -39,7 +39,7 @@ def findGuildOptions(guild_id):
             "guild_id": guild_id, "tz": "Europe/Berlin", "removed_maps": [], "added_maps": [], "threads": False,
             "top3_last_season": [], "doublePointsWeekend": False, "season" : "", "next_reset" : "", "downward_joins" : False,
             "seperate_mm": False, "seperate_mm_roles" : False, "anonymous_queues" : True, "ranks": False,
-            "doublePointsWeekendNegativeElo": False, "eloBoundary" : 200, "lb_limit" : 100, "lb_all_roles" : True
+            "doublePointsWeekendNegativeElo": False, "eloBoundary" : 200, "lb_limit" : 100, "lb_all_roles" : True, "cooldown_mm" : 0
         }
     except Exception as e:
         logger.error(f"Error finding guild {guild_id}: {e}")
@@ -180,4 +180,8 @@ def resetInMatchAndLockedStatus():
     guildMMs.drop()  
         
 if __name__ == "__main__": 
-    pass
+    for guild in guilds.find():
+        guild["cooldown_mm"] = 120
+        saveGuild(guild)
+        print(f"Updated guild {guild['guild_id']} with default cooldown_mm")
+        print(guild)

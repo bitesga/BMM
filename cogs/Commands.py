@@ -8,12 +8,43 @@ import pytz
 import asyncio
 import validators
 from typing import Literal
+import time
 
 from views.MatchmakingView import MatchmakingView, delete_mm_embed, get_mm_channel_for_region, get_role_for_ping_and_region
 from views.ResultValidationView import  evaluate_winner, refreshElos, fetchBattleLog, handle_points_point_system, handle_points_rank_system
 from views.RoleSelectionView import SelectRoleToDeleteMM, delete_mm
 from utils import getPlayerForBsId, View, currentFolder
 from cogs.BotAdmin import resetPlayer
+
+
+# Dynamic cooldown implementation
+def dynamic_guild_cooldown(bot_owner_id: int = 85342637082240):
+    cooldowns = {}  # Store cooldown data: {(guild_id, user_id): timestamp}
+    
+    async def predicate(interaction: discord.Interaction) -> bool:
+        # Bot owner bypass
+        if interaction.user.id == bot_owner_id:
+            return True
+            
+        # Get guild-specific cooldown from MongoDB
+        guild_options = mongodb.findGuildOptions(interaction.guild.id)
+        cooldown_duration = guild_options.get("cooldown_mm", 120)  # Default 120 seconds
+        
+        key = (interaction.guild.id, interaction.user.id)
+        current_time = time.time()
+        
+        # Check if user is on cooldown
+        if key in cooldowns:
+            time_passed = current_time - cooldowns[key]
+            if time_passed < cooldown_duration:
+                retry_after = cooldown_duration - time_passed
+                raise app_commands.CommandOnCooldown(None, retry_after)
+        
+        # Set cooldown for this user
+        cooldowns[key] = current_time
+        return True
+    
+    return app_commands.check(predicate)
 
   
 class Commands(commands.Cog):
@@ -38,7 +69,7 @@ class Commands(commands.Cog):
      
   @guild_only
   @app_commands.command(description="starts matchmaking")
-  @app_commands.checks.cooldown(1, 60*5, key=lambda i: (i.user.id and i.user.id != 85342637082240))  # 5 minutes cooldown per user except for bot owner
+  @dynamic_guild_cooldown()
   async def matchmaking(self, interaction: discord.Interaction, team_code: str):
     await interaction.response.defer(ephemeral=True)
 
