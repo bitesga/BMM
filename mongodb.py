@@ -180,8 +180,4 @@ def resetInMatchAndLockedStatus():
     guildMMs.drop()  
         
 if __name__ == "__main__": 
-    for guild in guilds.find():
-        guild["cooldown_mm"] = 120
-        saveGuild(guild)
-        print(f"Updated guild {guild['guild_id']} with default cooldown_mm")
-        print(guild)
+    pass
