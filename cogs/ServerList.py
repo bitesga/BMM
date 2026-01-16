@@ -22,9 +22,11 @@ class ServerList(commands.Cog):
 
   @tasks.loop(seconds=120)
   async def serverList(self):
-    description = "\n".join(guild.name for guild in self.bot.guilds)
+    total_members = sum(guild.member_count for guild in self.bot.guilds)
+    description = "\n".join(guild.name+" - "+str(guild.member_count) for guild in self.bot.guilds)
     serverListEmbed = discord.Embed(title="Server List", description=description, color=int("ffffff", 16))
     serverListEmbed.add_field(name="Server Count", value=len(self.bot.guilds))
+    serverListEmbed.add_field(name="Total Members", value=total_members)
     serverListEmbed.set_footer(text=f"Last Update: {datetime.datetime.now(germanTimeZone).strftime(format)}")
 
     serverListChannel = await self.bot.fetch_channel(1223417217727856661)
