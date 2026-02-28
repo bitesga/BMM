@@ -26,6 +26,7 @@ class BMM(commands.Bot):
         allowedGuilds = json.load(f)
     self.allowedGuilds = allowedGuilds
     self.validation_lock = asyncio.Lock()
+    self._startup_initialized = False
 
 
   def getOverwrite(self, guild, role1, role2):
@@ -260,22 +261,41 @@ class BMM(commands.Bot):
     
 
   async def on_ready(self):
+    if self._startup_initialized:
+      return
+
     for f in os.listdir('./cogs'):
       if f.endswith('.py'):
-        await bot.load_extension(f'cogs.{f[:-3]}')
-    await self.tree.sync()
-        
-    self.leave_guilds.start()  # Task direkt beim Initialisieren starten
-    self.refresh_admins.start()
-    self.refresh_blocked_admins.start()
-    resetInMatchAndLockedStatus()
+        extension = f'cogs.{f[:-3]}'
+        if extension in self.extensions:
+          continue
+        try:
+          await self.load_extension(extension)
+        except Exception as e:
+          self.logger.error(f"Failed to load extension {extension}: {str(e)}")
 
-    
+    try:
+      await self.tree.sync()
+    except Exception as e:
+      self.logger.error(f"Failed to sync app commands: {str(e)}")
+
+    if not self.leave_guilds.is_running():
+      self.leave_guilds.start()
+    if not self.refresh_admins.is_running():
+      self.refresh_admins.start()
+    if not self.refresh_blocked_admins.is_running():
+      self.refresh_blocked_admins.start()
+
+    try:
+      resetInMatchAndLockedStatus()
+    except Exception as e:
+      self.logger.error(f"Failed to reset in_match/locked status on startup: {str(e)}")
+
     now = datetime.now(pytz.timezone("Europe/Berlin"))
     for guild in self.guilds:
       try:
         _, matchmakingChannels, matchesChannel, _, _ = await self.getChannels(guild)
-          
+
         for mmch in matchmakingChannels:
           if mmch:
             await mmch.purge(limit=10, check=lambda m: True)
@@ -283,13 +303,15 @@ class BMM(commands.Bot):
               await mmch.send("I am back for new matchmakings 🚀")
         if matchesChannel:
           history = [message async for message in matchesChannel.history(limit=1)]
-          last_message = history[0] if history else None  # Get the most recent message
-          if now.hour == 22 and not last_message or last_message and not "Excited for upcoming matches" in last_message.content:
+          last_message = history[0] if history else None
+          if (now.hour == 22 and not last_message) or (last_message and "Excited for upcoming matches" not in last_message.content):
               await matchesChannel.send("Excited for upcoming matches <a:Elmofire:1324453688164487219>")
       except discord.errors.Forbidden:
         self.logger.warning(f"No permission to clean server {guild.name}")
       except Exception as e:
         self.logger.warning(f"Unknown error cleaning {guild.name}: {str(e)}")
+
+    self._startup_initialized = True
             
     
   

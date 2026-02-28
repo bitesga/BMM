@@ -11,6 +11,28 @@ from elo_system.RankSystem import RankSystem
 rank_system = RankSystem()
 
 
+async def safe_defer(interaction: discord.Interaction, ephemeral: bool = False):
+    try:
+        if not interaction.response.is_done():
+            await interaction.response.defer(ephemeral=ephemeral)
+        return True
+    except discord.NotFound:
+        return False
+    except Exception:
+        return False
+
+
+async def safe_followup(interaction: discord.Interaction, content: str, ephemeral: bool = True):
+    try:
+        if interaction.response.is_done():
+            await interaction.followup.send(content, ephemeral=ephemeral)
+        else:
+            await interaction.response.send_message(content, ephemeral=ephemeral)
+        return True
+    except Exception:
+        return False
+
+
 def handle_points_rank_system(winning_team, losing_team, match_id, privatefactor):
     logger.info(f"Match {match_id}: Applying rank system with privatefactor {privatefactor}")
     for player in winning_team:
@@ -261,17 +283,18 @@ class ResultValidationView(discord.ui.View):
     @discord.ui.button(label="Check Result", style=discord.ButtonStyle.green)
     async def check_result_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.message = interaction.message
-        await interaction.response.defer()
+        if not await safe_defer(interaction):
+            return
     
         async with self.bot.validation_lock:
             user_is_admin = str(interaction.user.id) in self.bot.admins or interaction.user.guild_permissions.administrator
             user_is_admin = user_is_admin and not str(interaction.user.id) in self.bot.blockedAdmins
             if not interaction.user.id in [player["discord_id"] for player in self.team1 + self.team2] and not user_is_admin:
-                return await interaction.followup.send("You are not part of this match.", ephemeral=True)
+                return await safe_followup(interaction, "You are not part of this match.", ephemeral=True)
 
             if self.match_evaluated:
                 try:
-                    return await interaction.followup.send("This match has already been evaluated.", ephemeral=True)
+                    return await safe_followup(interaction, "This match has already been evaluated.", ephemeral=True)
                 except Exception as e:
                     return self.logger.error(f"An error occurred on check result btn for Match #{self.match_id}: {str(e)}")
                     
@@ -289,7 +312,7 @@ class ResultValidationView(discord.ui.View):
                     )
                     await interaction.edit_original_response(embed=embed_validated, view=None)
                     
-                    await interaction.followup.send("match has been evaluated by command.", ephemeral=True)
+                    await safe_followup(interaction, "match has been evaluated by command.", ephemeral=True)
                     
                     if self.thread:
                         try:
@@ -308,7 +331,7 @@ class ResultValidationView(discord.ui.View):
             battle_log = await fetchBattleLog(self.team1[0]["bs_id"])
             if not battle_log:
                 self.logger.debug(f"Fetching battle log for Team 1 Player BS ID failed {self.team1[0]['bs_id']}.")
-                return await interaction.followup.send(f"Could not fetch the battle log for <@{self.team1[0]['discord_id']}> with BS ID: `{self.team1[0]['bs_id']}`.")
+                return await safe_followup(interaction, f"Could not fetch the battle log for <@{self.team1[0]['discord_id']}> with BS ID: `{self.team1[0]['bs_id']}`.", ephemeral=True)
 
             self.team1, self.team2 = refreshElos(self.team1, self.team2, interaction.guild.id)
             elos_before_evaluation = [player["elo"] for player in self.team1 + self.team2]
@@ -321,8 +344,8 @@ class ResultValidationView(discord.ui.View):
                     for user in not_founds:
                         not_founds_text += f"\n<@{user['discord_id']}> with BS ID: #{user['bs_id']}"
                     self.logger.debug(f"Map `{self.bs_map}` found but the following players where not found.\n{not_founds_text}")
-                    return await interaction.followup.send(f"Map `{self.bs_map}` found but the following players where not found.\n{not_founds_text}\n\nPlease save your correct id: `/save_id`", ephemeral=True)
-                return await interaction.followup.send(f"Match with the registered players and map `{self.bs_map}` was not found in the battle log.", ephemeral=True)
+                    return await safe_followup(interaction, f"Map `{self.bs_map}` found but the following players where not found.\n{not_founds_text}\n\nPlease save your correct id: `/save_id`", ephemeral=True)
+                return await safe_followup(interaction, f"Match with the registered players and map `{self.bs_map}` was not found in the battle log.", ephemeral=True)
 
             match["winner"] = winning_team
             match["validated"] = True
@@ -363,16 +386,17 @@ class ResultValidationView(discord.ui.View):
     async def vote_cancel_match(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.message = interaction.message
 
-        await interaction.response.defer()
+        if not await safe_defer(interaction):
+            return
         
         if not interaction.user.id in [player["discord_id"] for player in self.team1 + self.team2]:
-            return await interaction.followup.send("You are not part of this match.", ephemeral=True)
+            return await safe_followup(interaction, "You are not part of this match.", ephemeral=True)
 
         if self.match_evaluated:
-            return await interaction.followup.send("This match has already been evaluated.", ephemeral=True)
+            return await safe_followup(interaction, "This match has already been evaluated.", ephemeral=True)
 
         if interaction.user.id in self.users_voted_cancel:
-            return await interaction.followup.send("You already voted for cancelling this match.", ephemeral=True)
+            return await safe_followup(interaction, "You already voted for cancelling this match.", ephemeral=True)
 
         self.users_voted_cancel.add(interaction.user.id)
 
@@ -414,10 +438,11 @@ class ResultValidationView(discord.ui.View):
     async def cancel_match(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.message = interaction.message
         
-        await interaction.response.defer()
+        if not await safe_defer(interaction):
+            return
         
         if not ((str(interaction.user.id) in self.bot.admins or interaction.user.guild_permissions.administrator) and not str(interaction.user.id) in self.bot.blockedAdmins):
-            return await interaction.followup.send("⛔ This button is reserved for admins.", ephemeral=True)
+            return await safe_followup(interaction, "⛔ This button is reserved for admins.", ephemeral=True)
 
         # Benutzer in der Datenbank aktualisieren
         for user in self.team1 + self.team2:
@@ -512,7 +537,7 @@ class ResultValidationView(discord.ui.View):
                 self.team1, self.team2 = refreshElos(self.team1, self.team2, self.guild_id)
                 elos_before_evaluation = [player["elo"] for player in self.team1 + self.team2]
                 logger.debug(f"Elos davor {elos_before_evaluation}")
-                winning_team, _, not_founds = evaluate_winner(battle_log, self.team1, self.team2, self.bs_map, self.logger, self.match_id, self.match_date, self.guild_id)
+                winning_team, _, not_founds = evaluate_winner(battle_log, self.team1, self.team2, self.bs_map, self.logger, self.match_id, self.match_date, self.guild_id, self.private_key)
 
                 if not winning_team:
                     if not_founds:

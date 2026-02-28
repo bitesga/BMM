@@ -51,20 +51,42 @@ class Commands(commands.Cog):
   def __init__(self, bot : commands.Bot):
     self.bot = bot
     self.mm_lock = asyncio.Lock()
+
+
+  async def _safe_interaction_reply(self, interaction: discord.Interaction, content: str, ephemeral: bool = True):
+    try:
+      if interaction.response.is_done():
+        await interaction.followup.send(content=content, ephemeral=ephemeral)
+      else:
+        await interaction.response.send_message(content=content, ephemeral=ephemeral)
+      return True
+    except discord.NotFound as e:
+      self.bot.logger.warning(f"Interaction reply skipped (likely expired/unknown interaction): {str(e)}")
+    except discord.HTTPException as e:
+      self.bot.logger.warning(f"Interaction reply failed with HTTPException: {str(e)}")
+    except Exception as e:
+      self.bot.logger.error(f"Unexpected error while replying to interaction: {str(e)}")
+    return False
     
 
   async def __handle_error(self, function, interaction: discord.Interaction, error: app_commands.AppCommandError):
+    original_error = getattr(error, "original", error)
+
+    if isinstance(original_error, discord.NotFound) and getattr(original_error, "code", None) == 10062:
+      self.bot.logger.warning(f"Interaction expired in \"{function}\" command (10062 Unknown interaction).")
+      return
+
     if isinstance(error, app_commands.CommandOnCooldown):
-        await interaction.response.send_message(f"❌ {str(error)}", ephemeral=True)
+      await self._safe_interaction_reply(interaction, f"❌ {str(error)}", ephemeral=True)
     elif isinstance(error, app_commands.MissingPermissions):
-        await interaction.response.send_message("❌ You do not have permission to use this command.", ephemeral=True)
+      await self._safe_interaction_reply(interaction, "❌ You do not have permission to use this command.", ephemeral=True)
     elif isinstance(error, app_commands.NoPrivateMessage):
-        await interaction.response.send_message("❌ This command cannot be run in private messages.", ephemeral=True)
+      await self._safe_interaction_reply(interaction, "❌ This command cannot be run in private messages.", ephemeral=True)
     elif isinstance(error, app_commands.CheckFailure):
-        await interaction.response.send_message("❌ You do not have permission to use this command.", ephemeral=True)
+      await self._safe_interaction_reply(interaction, "❌ You do not have permission to use this command.", ephemeral=True)
     else:
-        self.bot.logger.error(f"Unhandled error in \"{function}\" command: {error}")
-        await interaction.response.send_message(f"❌ An unknown error occurred: {error}", ephemeral=True)
+      self.bot.logger.error(f"Unhandled error in \"{function}\" command: {error}")
+      await self._safe_interaction_reply(interaction, f"❌ An unknown error occurred: {error}", ephemeral=True)
     
      
   @guild_only

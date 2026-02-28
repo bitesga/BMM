@@ -10,6 +10,28 @@ from views.ResultValidationView import ResultValidationView
 from cogs.Maps import getCompetitiveMaps
 
 globalMatchmakingLog = asyncio.Lock() 
+
+
+async def safe_defer(interaction: discord.Interaction, ephemeral: bool = True):
+    try:
+        if not interaction.response.is_done():
+            await interaction.response.defer(ephemeral=ephemeral)
+        return True
+    except discord.NotFound:
+        return False
+    except Exception:
+        return False
+
+
+async def safe_followup(interaction: discord.Interaction, content: str, ephemeral: bool = True):
+    try:
+        if interaction.response.is_done():
+            await interaction.followup.send(content=content, ephemeral=ephemeral)
+        else:
+            await interaction.response.send_message(content=content, ephemeral=ephemeral)
+        return True
+    except Exception:
+        return False
   
  
 def get_mm_channel_for_region(channels, region):
@@ -93,92 +115,100 @@ class MatchmakingView(discord.ui.View):
     @discord.ui.button(label="Join", style=discord.ButtonStyle.green)
     async def join_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.message = interaction.message
-        await interaction.response.defer(ephemeral=True)
-        async with self.lock:  # Synchronisation starten
-            if len(self.ready_users) >= 6:
-                return await interaction.followup.send(content="⛔ The lobby is already full!", ephemeral=True)
+        if not await safe_defer(interaction, ephemeral=True):
+            return
 
-            user_options = mongodb.findUserOptions(interaction.user.id, interaction.guild.id)
-            guild_options = mongodb.findGuildOptions(interaction.guild.id)
+        try:
+            async with self.lock:  # Synchronisation starten
+                if len(self.ready_users) >= 6:
+                    return await safe_followup(interaction, content="⛔ The lobby is already full!", ephemeral=True)
+
+                user_options = mongodb.findUserOptions(interaction.user.id, interaction.guild.id)
+                guild_options = mongodb.findGuildOptions(interaction.guild.id)
                 
-            if "timeout" in user_options:
-                if pytz.timezone(guild_options["tz"]).localize(user_options["timeout"]) > datetime.datetime.now(pytz.timezone(guild_options["tz"])):
-                    return await interaction.followup.send(content=f"⛔ You have been timed out. You can resume playing at: {user_options['timeout'].strftime('%d.%m.%Y, %H:%M')}.", ephemeral=True)
+                if "timeout" in user_options:
+                    if pytz.timezone(guild_options["tz"]).localize(user_options["timeout"]) > datetime.datetime.now(pytz.timezone(guild_options["tz"])):
+                        return await safe_followup(interaction, content=f"⛔ You have been timed out. You can resume playing at: {user_options['timeout'].strftime('%d.%m.%Y, %H:%M')}.", ephemeral=True)
 
-            if "roles_timeout" in guild_options:
-                for role in interaction.user.roles:
-                    if role.id in guild_options["roles_timeout"]:
-                        return await interaction.followup.send(
-                            content=f"⛔ Your role {role.mention} has been timed out. This role can resume playing at: {user_options['timeout'].strftime('%d.%m.%Y, %H:%M')} {guild_options['tz']} timezone.",
-                            ephemeral=True)
+                if "roles_timeout" in guild_options:
+                    for role in interaction.user.roles:
+                        if role.id in guild_options["roles_timeout"]:
+                            return await safe_followup(
+                                interaction,
+                                content=f"⛔ Your role {role.mention} has been timed out. This role can resume playing at: {user_options['timeout'].strftime('%d.%m.%Y, %H:%M')} {guild_options['tz']} timezone.",
+                                ephemeral=True)
         
-            if not user_options or not user_options.get("bs_id"):
-                return await interaction.followup.send(content="⛔ You need to save your ID using `/save_id` to join the lobby.", ephemeral=True)
+                if not user_options or not user_options.get("bs_id"):
+                    return await safe_followup(interaction, content="⛔ You need to save your ID using `/save_id` to join the lobby.", ephemeral=True)
             
             
-            if self.private_key:
-                private_room = mongodb.findPrivate(self.private_key, str(interaction.guild.id))
-                if not interaction.user.id in private_room["members"]:
-                    return await interaction.followup.send(content="⛔ You need to join this private room using `/private_join` and the private key to join this lobby.", ephemeral=True)
-            else:
-                if abs(user_options["elo"] - self.host_elo) > guild_options["eloBoundary"]:
-                    if not (user_options["elo"] > self.host_elo and guild_options["downward_joins"]):
-                        return await interaction.followup.send(content=f"⛔ Your elo is more than {guild_options['eloBoundary']} points away from the host's elo, so you can't join this mm!", ephemeral=True)
+                if self.private_key:
+                    private_room = mongodb.findPrivate(self.private_key, str(interaction.guild.id))
+                    if not private_room or "members" not in private_room or interaction.user.id not in private_room["members"]:
+                        return await safe_followup(interaction, content="⛔ You need to join this private room using `/private_join` and the private key to join this lobby.", ephemeral=True)
+                else:
+                    if abs(user_options["elo"] - self.host_elo) > guild_options["eloBoundary"]:
+                        if not (user_options["elo"] > self.host_elo and guild_options["downward_joins"]):
+                            return await safe_followup(interaction, content=f"⛔ Your elo is more than {guild_options['eloBoundary']} points away from the host's elo, so you can't join this mm!", ephemeral=True)
                     
                     
-                if guild_options["seperate_mm"]:
-                    if not "enthusiasm" in user_options:
-                        return await interaction.followup.send(content="⛔ Please `/save_id` to determine your enthusiasm level (tryhard/casual)!", ephemeral=True)
+                    if guild_options["seperate_mm"]:
+                        if not "enthusiasm" in user_options:
+                            return await safe_followup(interaction, content="⛔ Please `/save_id` to determine your enthusiasm level (tryhard/casual)!", ephemeral=True)
                     
-                    if not user_options["enthusiasm"].title() == self.enthusiasm.title() and not (guild_options["downward_joins"] and user_options["enthusiasm"] == "tryhard"):
-                        return await interaction.followup.send(content=f"⛔ Your enthusiasm level is {user_options['enthusiasm']}, so you can not join this {self.enthusiasm} lobby!", ephemeral=True)
+                        if not user_options["enthusiasm"].title() == self.enthusiasm.title() and not (guild_options["downward_joins"] and user_options["enthusiasm"] == "tryhard"):
+                            return await safe_followup(interaction, content=f"⛔ Your enthusiasm level is {user_options['enthusiasm']}, so you can not join this {self.enthusiasm} lobby!", ephemeral=True)
                 
-                player_role = None 
-                if guild_options["seperate_mm_roles"]:
-                    for role in reversed(interaction.user.roles):
-                        if role.id in guild_options["mm_roles"]:
-                            player_role = role
-                            break
-                    if not player_role:
-                        return await interaction.followup.send(content="⛔ Please ask an admin to get a skill level role!", ephemeral=True)
-                    if guild_options["downward_joins"]:
-                        if not player_role >= self.lobby_role:
-                            return await interaction.followup.send(content=f"⛔ Your role {player_role.mention} is below the lobby role {self.lobby_role.mention}, so you can not join!", ephemeral=True)
-                    else:      
-                        if not player_role == self.lobby_role:
-                            return await interaction.followup.send(content=f"⛔ Your role is {player_role.mention}, so you can not join this {self.lobby_role.mention} lobby!", ephemeral=True)
+                    player_role = None 
+                    if guild_options["seperate_mm_roles"]:
+                        for role in reversed(interaction.user.roles):
+                            if role.id in guild_options["mm_roles"]:
+                                player_role = role
+                                break
+                        if not player_role:
+                            return await safe_followup(interaction, content="⛔ Please ask an admin to get a skill level role!", ephemeral=True)
+                        if guild_options["downward_joins"]:
+                            if not player_role >= self.lobby_role:
+                                return await safe_followup(interaction, content=f"⛔ Your role {player_role.mention} is below the lobby role {self.lobby_role.mention}, so you can not join!", ephemeral=True)
+                        else:      
+                            if not player_role == self.lobby_role:
+                                return await safe_followup(interaction, content=f"⛔ Your role is {player_role.mention}, so you can not join this {self.lobby_role.mention} lobby!", ephemeral=True)
                 
-            if interaction.user in self.ready_users:
-                return await interaction.followup.send(content="⛔ You are already in the lobby!", ephemeral=True)
+                if interaction.user in self.ready_users:
+                    return await safe_followup(interaction, content="⛔ You are already in the lobby!", ephemeral=True)
                 
-            if user_options.get("in_match") and user_options.get("in_match") > datetime.datetime.now():
-                return await interaction.followup.send(content=
-                    "⛔ You can't join this matchmaking, as you are in a match already.", ephemeral=True
-                )
+                if user_options.get("in_match") and user_options.get("in_match") > datetime.datetime.now():
+                    return await safe_followup(interaction, content=
+                        "⛔ You can't join this matchmaking, as you are in a match already.", ephemeral=True
+                    )
                 
-            self.ready_users.append(interaction.user)
-            await self.update_embed(interaction.message)
-            await interaction.followup.send(content="✅ You joined the matchmaking lobby!", ephemeral=True)
+                self.ready_users.append(interaction.user)
+                await self.update_embed(interaction.message)
+                await safe_followup(interaction, content="✅ You joined the matchmaking lobby!", ephemeral=True)
             
-            # Lobby voll -> Teams erstellen
-            if len(self.ready_users) == 6:
-                    if not self.started:  # Doppelte Prüfung innerhalb des Locks
-                        self.started = True
-                        async with globalMatchmakingLog:
-                            return await self.start_matchmaking(self.matchesChannel, self.matchmakingChannel)
+                # Lobby voll -> Teams erstellen
+                if len(self.ready_users) == 6:
+                        if not self.started:  # Doppelte Prüfung innerhalb des Locks
+                            self.started = True
+                            async with globalMatchmakingLog:
+                                return await self.start_matchmaking(self.matchesChannel, self.matchmakingChannel)
+        except Exception as e:
+            self.logger.error(f"Join button error in {self.matchmakingChannel.guild.name}: {str(e)}")
+            await safe_followup(interaction, content="⛔ Something went wrong while joining. Please try again.", ephemeral=True)
                 
             
 
     @discord.ui.button(label="Leave", style=discord.ButtonStyle.red)
     async def leave_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.message = interaction.message
-        await interaction.response.defer(ephemeral=True)
+        if not await safe_defer(interaction, ephemeral=True):
+            return
         if interaction.user not in self.ready_users:
-            return await interaction.followup.send(content="⛔ You are not in the lobby!", ephemeral=True)
+            return await safe_followup(interaction, content="⛔ You are not in the lobby!", ephemeral=True)
 
         self.ready_users.remove(interaction.user)
         await self.update_embed(interaction.message)
-        await interaction.followup.send(content="✅ You left the matchmaking lobby.", ephemeral=True)
+        await safe_followup(interaction, content="✅ You left the matchmaking lobby.", ephemeral=True)
         
         if interaction.user == self.host:
             host_left_message = discord.Embed(
