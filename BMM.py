@@ -13,6 +13,8 @@ class BMM(commands.Bot):
   def __init__(self, intents):
     super().__init__(command_prefix="----------", intents=intents, activity=discord.Activity(type=discord.ActivityType.playing, name="Discord PL!"))
     self.logger = logger
+    self.global_command_cooldown_seconds = 15
+    self._global_command_cooldowns = {}
     # Load admins set
     with open("admins.json", "r", encoding="UTF-8") as f:
         admins = json.load(f)
@@ -27,6 +29,35 @@ class BMM(commands.Bot):
     self.allowedGuilds = allowedGuilds
     self.validation_lock = asyncio.Lock()
     self._startup_initialized = False
+
+
+  async def on_interaction(self, interaction: discord.Interaction):
+    if interaction.type == discord.InteractionType.application_command and interaction.user and not interaction.user.bot:
+      command_data = interaction.data or {}
+      command_id = command_data.get("id")
+      guild_id = interaction.guild_id if interaction.guild_id else 0
+      key = (guild_id, interaction.user.id, command_id)
+
+      now = asyncio.get_running_loop().time()
+      cooldown_until = self._global_command_cooldowns.get(key, 0)
+      retry_after = cooldown_until - now
+
+      if retry_after > 0:
+        if interaction.response.is_done():
+          await interaction.followup.send(
+            content=f"⏳ Slow down a bit. This command is on cooldown for {retry_after:.1f}s.",
+            ephemeral=True,
+          )
+        else:
+          await interaction.response.send_message(
+            content=f"⏳ Slow down a bit. This command is on cooldown for {retry_after:.1f}s.",
+            ephemeral=True,
+          )
+        return
+
+      self._global_command_cooldowns[key] = now + self.global_command_cooldown_seconds
+
+    await super().on_interaction(interaction)
 
 
   def getOverwrite(self, guild, role1, role2):

@@ -173,9 +173,8 @@ class Leaderboard(commands.Cog):
     self.refresh_leaderboard.start()
 
 
-  @tasks.loop(minutes=3)
+  @tasks.loop(minutes=5)
   async def refresh_leaderboard(self):
-    
     logger.info("Starting leaderboard refresh task.")
     for guild in self.bot.guilds:
         self.bot.logger.info(f"updating {guild.name}")
@@ -184,8 +183,8 @@ class Leaderboard(commands.Cog):
                 continue
 
             await update_leaderboard(self.bot, guild)
-            await asyncio.sleep(3)
-            
+            await asyncio.sleep(10)
+        
         except discord.errors.Forbidden:
             logger.warning(f"No permission to update lb in server {guild.name}")
         
