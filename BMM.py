@@ -1,5 +1,6 @@
 import os, discord, json
 from discord.ext import commands, tasks
+from discord import app_commands
 import asyncio
 from mongodb import resetInMatchAndLockedStatus, findGuildOptions, saveGuild
 from datetime import datetime
@@ -29,35 +30,35 @@ class BMM(commands.Bot):
     self.allowedGuilds = allowedGuilds
     self.validation_lock = asyncio.Lock()
     self._startup_initialized = False
+    self.tree.add_check(self._global_command_cooldown_check)
 
 
-  async def on_interaction(self, interaction: discord.Interaction):
-    if interaction.type == discord.InteractionType.application_command and interaction.user and not interaction.user.bot:
-      command_data = interaction.data or {}
-      command_id = command_data.get("id")
-      guild_id = interaction.guild_id if interaction.guild_id else 0
-      key = (guild_id, interaction.user.id, command_id)
+  async def _global_command_cooldown_check(self, interaction: discord.Interaction) -> bool:
+    if not interaction.user or interaction.user.bot:
+      return True
 
-      now = asyncio.get_running_loop().time()
-      cooldown_until = self._global_command_cooldowns.get(key, 0)
-      retry_after = cooldown_until - now
+    command_data = interaction.data or {}
+    command_identifier = command_data.get("id") or command_data.get("name") or "unknown"
+    guild_id = interaction.guild_id if interaction.guild_id else 0
+    key = (guild_id, interaction.user.id, command_identifier)
 
-      if retry_after > 0:
-        if interaction.response.is_done():
-          await interaction.followup.send(
-            content=f"⏳ Slow down a bit. This command is on cooldown for {retry_after:.1f}s.",
-            ephemeral=True,
-          )
-        else:
-          await interaction.response.send_message(
-            content=f"⏳ Slow down a bit. This command is on cooldown for {retry_after:.1f}s.",
-            ephemeral=True,
-          )
-        return
+    now = asyncio.get_running_loop().time()
+    cooldown_until = self._global_command_cooldowns.get(key, 0)
+    retry_after = cooldown_until - now
 
-      self._global_command_cooldowns[key] = now + self.global_command_cooldown_seconds
+    if retry_after > 0:
+      raise app_commands.CommandOnCooldown(None, retry_after)
 
-    await super().on_interaction(interaction)
+    self._global_command_cooldowns[key] = now + self.global_command_cooldown_seconds
+
+    if len(self._global_command_cooldowns) > 10000:
+      self._global_command_cooldowns = {
+        cooldown_key: until
+        for cooldown_key, until in self._global_command_cooldowns.items()
+        if until > now
+      }
+
+    return True
 
 
   def getOverwrite(self, guild, role1, role2):

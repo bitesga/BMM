@@ -145,7 +145,9 @@ class Maps(commands.Cog):
      
      
   async def __handle_error(self, function, interaction: discord.Interaction, error: app_commands.AppCommandError):
-    if isinstance(error, app_commands.MissingPermissions):
+    if isinstance(error, app_commands.CommandOnCooldown):
+        await interaction.response.send_message(f"❌ {str(error)}", ephemeral=True)
+    elif isinstance(error, app_commands.MissingPermissions):
         await interaction.response.send_message("❌ You do not have permission to use this command.", ephemeral=True)
     elif isinstance(error, app_commands.NoPrivateMessage):
         await interaction.response.send_message("❌ This command cannot be run in private messages.", ephemeral=True)
