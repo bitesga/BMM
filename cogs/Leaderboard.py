@@ -5,7 +5,7 @@ from discord.app_commands import guild_only
 import mongodb
 from datetime import datetime, timedelta
 import pytz
-from utils import logger
+from utils import logger, dynamic_guild_cooldown
 import json
 
 
@@ -194,6 +194,7 @@ class Leaderboard(commands.Cog):
 
   @guild_only
   @app_commands.command(description="update leaderboard leaderboard")
+  @dynamic_guild_cooldown(seconds=15)
   async def update_leaderboard(self, interaction: discord.Interaction):
     if not (str(interaction.user.id) in self.bot.admins or interaction.user.guild_permissions.administrator) or str(interaction.user.id) in self.bot.blockedAdmins:
         return await interaction.response.send_message(content=f"⛔ You are not allowed to use this command.")

@@ -1,6 +1,5 @@
 import os, discord, json
 from discord.ext import commands, tasks
-from discord import app_commands
 import asyncio
 from mongodb import resetInMatchAndLockedStatus, findGuildOptions, saveGuild
 from datetime import datetime
@@ -14,8 +13,6 @@ class BMM(commands.Bot):
   def __init__(self, intents):
     super().__init__(command_prefix="----------", intents=intents, activity=discord.Activity(type=discord.ActivityType.playing, name="Discord PL!"))
     self.logger = logger
-    self.global_command_cooldown_seconds = 15
-    self._global_command_cooldowns = {}
     # Load admins set
     with open("admins.json", "r", encoding="UTF-8") as f:
         admins = json.load(f)
@@ -30,35 +27,6 @@ class BMM(commands.Bot):
     self.allowedGuilds = allowedGuilds
     self.validation_lock = asyncio.Lock()
     self._startup_initialized = False
-    self.tree.add_check(self._global_command_cooldown_check)
-
-
-  async def _global_command_cooldown_check(self, interaction: discord.Interaction) -> bool:
-    if not interaction.user or interaction.user.bot:
-      return True
-
-    command_data = interaction.data or {}
-    command_identifier = command_data.get("id") or command_data.get("name") or "unknown"
-    guild_id = interaction.guild_id if interaction.guild_id else 0
-    key = (guild_id, interaction.user.id, command_identifier)
-
-    now = asyncio.get_running_loop().time()
-    cooldown_until = self._global_command_cooldowns.get(key, 0)
-    retry_after = cooldown_until - now
-
-    if retry_after > 0:
-      raise app_commands.CommandOnCooldown(None, retry_after)
-
-    self._global_command_cooldowns[key] = now + self.global_command_cooldown_seconds
-
-    if len(self._global_command_cooldowns) > 10000:
-      self._global_command_cooldowns = {
-        cooldown_key: until
-        for cooldown_key, until in self._global_command_cooldowns.items()
-        if until > now
-      }
-
-    return True
 
 
   def getOverwrite(self, guild, role1, role2):

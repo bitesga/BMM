@@ -7,6 +7,7 @@ import mongodb
 import random
 import string
 import datetime, pytz
+from utils import dynamic_guild_cooldown
 
 botAdmins = [324607583841419276, 818879706350092298, 230684337341857792]
 
@@ -58,6 +59,7 @@ class BotAdmin(commands.Cog):
      
   @guild_only
   @app_commands.command(description="create a private room")
+  @dynamic_guild_cooldown(seconds=15)
   async def private_room(self, interaction: discord.Interaction, name: str, server_id: str):
     if interaction.user.id not in botAdmins:
       if interaction.user.guild_permissions.administrator:
@@ -94,6 +96,7 @@ class BotAdmin(commands.Cog):
      
   @guild_only
   @app_commands.command(description="block an admin from using admin commands")
+  @dynamic_guild_cooldown(seconds=15)
   async def admin_block(self, interaction: discord.Interaction, user: discord.User):
     if interaction.user.id not in botAdmins:
       if interaction.user.guild_permissions.administrator:
@@ -121,6 +124,7 @@ class BotAdmin(commands.Cog):
   
   @guild_only
   @app_commands.command(description="remove an admin from the block list")
+  @dynamic_guild_cooldown(seconds=15)
   async def admin_block_remove(self, interaction: discord.Interaction, user: discord.User):
     if interaction.user.id not in botAdmins:
       if interaction.user.guild_permissions.administrator:
@@ -148,6 +152,7 @@ class BotAdmin(commands.Cog):
      
   @guild_only
   @app_commands.command(description="add a user to the admin list")
+  @dynamic_guild_cooldown(seconds=15)
   async def admin_add(self, interaction: discord.Interaction, user: discord.User):
     if interaction.user.id not in botAdmins:
       if interaction.user.guild_permissions.administrator:
@@ -175,6 +180,7 @@ class BotAdmin(commands.Cog):
      
   @guild_only
   @app_commands.command(description="remove a user from the admin list")
+  @dynamic_guild_cooldown(seconds=15)
   async def admin_remove(self, interaction: discord.Interaction, user: discord.User):
     if interaction.user.id not in botAdmins:
       if interaction.user.guild_permissions.administrator:
@@ -201,6 +207,7 @@ class BotAdmin(commands.Cog):
         
 
   @app_commands.command(description="delete category and all its channels")
+  @dynamic_guild_cooldown(seconds=15)
   async def dcat(self, interaction: discord.Interaction, name: str):
       if interaction.user.id not in botAdmins:
           return await interaction.response.send_message(content="⛔ You are not allowed to use this command.")
@@ -221,6 +228,7 @@ class BotAdmin(commands.Cog):
      
      
   @app_commands.command(description="whitelist a server")
+  @dynamic_guild_cooldown(seconds=15)
   async def wl(self, interaction: discord.Interaction, id: str, name: str):
       if interaction.user.id not in botAdmins:
           return await interaction.response.send_message(content="⛔ You are not allowed to use this command.")
@@ -245,6 +253,7 @@ class BotAdmin(commands.Cog):
      
   
   @app_commands.command(description="blacklist a server (remove from whitelist)")
+  @dynamic_guild_cooldown(seconds=15)
   async def bl(self, interaction: discord.Interaction, id: str):
       if interaction.user.id not in botAdmins:
           return await interaction.response.send_message(content="⛔ You are not allowed to use this command.")
@@ -270,6 +279,7 @@ class BotAdmin(commands.Cog):
      
     #Locks matchmaking
   @app_commands.command(description="locks matchmaking until unlocked.")
+  @dynamic_guild_cooldown(seconds=15)
   async def lock_mm(self, interaction: discord.Interaction, reason: str):
     if not interaction.user.id in botAdmins:
         return await interaction.response.send_message(content=f"⛔ You are not allowed to use this command.")
@@ -282,6 +292,7 @@ class BotAdmin(commands.Cog):
 
     # Unlocks matchmaking
   @app_commands.command(description="unlock matchmaking")
+  @dynamic_guild_cooldown(seconds=15)
   async def unlock_mm(self, interaction: discord.Interaction):
     if not interaction.user.id in botAdmins:
         return await interaction.response.send_message(content=f"⛔ You are not allowed to use this command.")
@@ -295,6 +306,7 @@ class BotAdmin(commands.Cog):
      
     
   @app_commands.command(description="sends bot announcement to all servers.")
+  @dynamic_guild_cooldown(seconds=15)
   async def announce(self, interaction: discord.Interaction, msg: str):
     if not interaction.user.id in botAdmins:
         return await interaction.response.send_message(content=f"⛔ You are not allowed to use this command.")

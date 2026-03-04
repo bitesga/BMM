@@ -4,7 +4,7 @@ from discord import app_commands
 from discord.app_commands import guild_only
 import mongodb
 import requests
-from utils import simplify
+from utils import simplify, dynamic_guild_cooldown
 
 
 # Abrufen der Map Details
@@ -56,6 +56,7 @@ class Maps(commands.Cog):
   # Delete player ID
   @guild_only
   @app_commands.command(description="displays maps")
+  @dynamic_guild_cooldown(seconds=15)
   async def maps(self, interaction: discord.Interaction):
     mappool_embed = await getMappoolEmbed(self.bot, interaction.guild.id)
     return await interaction.response.send_message(embed=mappool_embed)
@@ -68,6 +69,7 @@ class Maps(commands.Cog):
   # Delete player ID
   @guild_only
   @app_commands.command(description="add a map to the mappool")
+  @dynamic_guild_cooldown(seconds=15)
   async def map_add(self, interaction: discord.Interaction, map: str):
     if not (str(interaction.user.id) in self.bot.admins or interaction.user.guild_permissions.administrator) or str(interaction.user.id) in self.bot.blockedAdmins:
         return await interaction.response.send_message(content=f"⛔ You are not allowed to use this command.")      
@@ -98,6 +100,7 @@ class Maps(commands.Cog):
   # Delete player ID
   @guild_only
   @app_commands.command(description="removes a map from mappool")
+  @dynamic_guild_cooldown(seconds=15)
   async def map_remove(self, interaction: discord.Interaction, map: str):
     if not (str(interaction.user.id) in self.bot.admins or interaction.user.guild_permissions.administrator) or str(interaction.user.id) in self.bot.blockedAdmins:
         return await interaction.response.send_message(content=f"⛔ You are not allowed to use this command.")      
@@ -126,6 +129,7 @@ class Maps(commands.Cog):
      
   @guild_only
   @app_commands.command(description="resets to core mappool")
+  @dynamic_guild_cooldown(seconds=15)
   async def reset_maps(self, interaction: discord.Interaction):
     if not (str(interaction.user.id) in self.bot.admins or interaction.user.guild_permissions.administrator) or str(interaction.user.id) in self.bot.blockedAdmins:
         return await interaction.response.send_message(content=f"⛔ You are not allowed to use this command.")      

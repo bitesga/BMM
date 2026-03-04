@@ -8,43 +8,12 @@ import pytz
 import asyncio
 import validators
 from typing import Literal
-import time
 
 from views.MatchmakingView import MatchmakingView, delete_mm_embed, get_mm_channel_for_region, get_role_for_ping_and_region
 from views.ResultValidationView import  evaluate_winner, refreshElos, fetchBattleLog, handle_points_point_system, handle_points_rank_system
 from views.RoleSelectionView import SelectRoleToDeleteMM, delete_mm
-from utils import getPlayerForBsId, View, currentFolder
+from utils import getPlayerForBsId, View, currentFolder, dynamic_guild_cooldown
 from cogs.BotAdmin import resetPlayer
-
-
-# Dynamic cooldown implementation
-def dynamic_guild_cooldown(bot_owner_id: int = 324607583841419276):
-    cooldowns = {}  # Store cooldown data: {(guild_id, user_id): timestamp}
-    
-    async def predicate(interaction: discord.Interaction) -> bool:
-        # Bot owner bypass
-        if interaction.user.id == bot_owner_id:
-            return True
-            
-        # Get guild-specific cooldown from MongoDB
-        guild_options = mongodb.findGuildOptions(interaction.guild.id)
-        cooldown_duration = guild_options.get("cooldown_mm", 120)  # Default 120 seconds
-        
-        key = (interaction.guild.id, interaction.user.id)
-        current_time = time.time()
-        
-        # Check if user is on cooldown
-        if key in cooldowns:
-            time_passed = current_time - cooldowns[key]
-            if time_passed < cooldown_duration:
-                retry_after = cooldown_duration - time_passed
-                raise app_commands.CommandOnCooldown(None, retry_after)
-        
-        # Set cooldown for this user
-        cooldowns[key] = current_time
-        return True
-    
-    return app_commands.check(predicate)
 
   
 class Commands(commands.Cog):
@@ -91,7 +60,7 @@ class Commands(commands.Cog):
      
   @guild_only
   @app_commands.command(description="starts matchmaking")
-  @dynamic_guild_cooldown()
+  @dynamic_guild_cooldown(use_matchmaking_setting=True)
   async def matchmaking(self, interaction: discord.Interaction, team_code: str):
     await interaction.response.defer(ephemeral=True)
 
@@ -225,6 +194,7 @@ class Commands(commands.Cog):
     
   @guild_only
   @app_commands.command(description="Starts private matchmaking with a private key.")
+  @dynamic_guild_cooldown(seconds=15)
   async def private_mm(self, interaction: discord.Interaction, team_code: str, private_key: str):
       await interaction.response.defer(ephemeral=True)
 
@@ -314,6 +284,7 @@ class Commands(commands.Cog):
          
   @guild_only
   @app_commands.command(description="forces result if automatic detection fails")
+  @dynamic_guild_cooldown(seconds=15)
   async def set_result(self, interaction: discord.Interaction, match_id: str, winner: Literal["team1 🔵", "team2 🔴"], score: Literal["2-1", "2-0"]):
     if not (str(interaction.user.id) in self.bot.admins or interaction.user.guild_permissions.administrator) or str(interaction.user.id) in self.bot.blockedAdmins:
         return await interaction.response.send_message(content=f"⛔ You are not allowed to use this command.")
@@ -377,6 +348,7 @@ class Commands(commands.Cog):
   
   @guild_only
   @app_commands.command(description="validates a match incase button doesn't respond")
+  @dynamic_guild_cooldown(seconds=15)
   async def validate_result(self, interaction: discord.Interaction, match_id: str):
     await interaction.response.defer()
     
@@ -441,6 +413,7 @@ class Commands(commands.Cog):
       
   
   @app_commands.command(description="Join a private room using the given private key.")
+  @dynamic_guild_cooldown(seconds=15)
   async def private_join(self, interaction: discord.Interaction, private_key: str):
       await interaction.response.defer(ephemeral=True)
 
@@ -467,6 +440,7 @@ class Commands(commands.Cog):
       
   @guild_only
   @app_commands.command(description="save your id (#) for result tracking")
+  @dynamic_guild_cooldown(seconds=15)
   async def save_id(self, interaction: discord.Interaction, bs_id: str, region: Literal["EMEA", "NA", "SA", "APAC"], ping: Literal["ping 🔔", "no ping 🔕"]):
     await interaction.response.defer(ephemeral=True)
     user_options = mongodb.findUserOptions(interaction.user.id, interaction.guild.id)
@@ -512,6 +486,7 @@ class Commands(commands.Cog):
         
   @guild_only
   @app_commands.command(description="delete a user from leaderboard")
+  @dynamic_guild_cooldown(seconds=15)
   async def add_user(self, interaction: discord.Interaction, user: discord.Member, bs_id: str, region: Literal["EMEA", "NA", "SA", "APAC"], ping: Literal["ping 🔔", "no ping 🔕"]):
     if not (str(interaction.user.id) in self.bot.admins or interaction.user.guild_permissions.administrator) or str(interaction.user.id) in self.bot.blockedAdmins:
         return await interaction.response.send_message(content=f"⛔ You are not allowed to use this command.")
@@ -561,6 +536,7 @@ class Commands(commands.Cog):
      
   @guild_only
   @app_commands.command(description="delete a users account data")
+  @dynamic_guild_cooldown(seconds=15)
   async def delete_user(self, interaction: discord.Interaction, user_to_delete: discord.Member = None, id_of_user_to_delete: int = None):
     if not (str(interaction.user.id) in self.bot.admins or interaction.user.guild_permissions.administrator) or str(interaction.user.id) in self.bot.blockedAdmins:
         return await interaction.response.send_message(content=f"⛔ You are not allowed to use this command.")
@@ -589,6 +565,7 @@ class Commands(commands.Cog):
   
   @guild_only
   @app_commands.command(description="resets a users stats")
+  @dynamic_guild_cooldown(seconds=15)
   async def reset_user_stats(self, interaction: discord.Interaction, user_to_delete: discord.Member = None, id_of_user_to_delete: int = None):
     if not (str(interaction.user.id) in self.bot.admins or interaction.user.guild_permissions.administrator) or str(interaction.user.id) in self.bot.blockedAdmins:
         return await interaction.response.send_message(content=f"⛔ You are not allowed to use this command.")
@@ -613,6 +590,7 @@ class Commands(commands.Cog):
     
   @guild_only
   @app_commands.command(description="manually add or subtract elo points")
+  @dynamic_guild_cooldown(seconds=15)
   async def add_points(self, interaction: discord.Interaction, points: int, user: discord.Member, user2: discord.Member, user3: discord.Member):
     if not (str(interaction.user.id) in self.bot.admins or interaction.user.guild_permissions.administrator) or str(interaction.user.id) in self.bot.blockedAdmins:
         return await interaction.response.send_message(content=f"⛔ You are not allowed to use this command.")
@@ -645,6 +623,7 @@ class Commands(commands.Cog):
 
   @guild_only
   @app_commands.command(description="manually add or subtract wins")
+  @dynamic_guild_cooldown(seconds=15)
   async def add_wins(self, interaction: discord.Interaction, win_amount: int, user: discord.Member, user2: discord.Member, user3: discord.Member):
     if not (str(interaction.user.id) in self.bot.admins or interaction.user.guild_permissions.administrator) or str(interaction.user.id) in self.bot.blockedAdmins:
         return await interaction.response.send_message(content=f"⛔ You are not allowed to use this command.")
@@ -676,6 +655,7 @@ class Commands(commands.Cog):
 
   @guild_only
   @app_commands.command(description="manually add or subtract matches_played")
+  @dynamic_guild_cooldown(seconds=15)
   async def add_matches_played(self, interaction: discord.Interaction, match_amount: int, user: discord.Member, user2: discord.Member, user3: discord.Member):
     if not (str(interaction.user.id) in self.bot.admins or interaction.user.guild_permissions.administrator) or str(interaction.user.id) in self.bot.blockedAdmins:
         return await interaction.response.send_message(content=f"⛔ You are not allowed to use this command.")
@@ -707,6 +687,7 @@ class Commands(commands.Cog):
      
   @guild_only
   @app_commands.command(description="timeout a user from playing matchmaking.")
+  @dynamic_guild_cooldown(seconds=15)
   async def timeout(self, interaction: discord.Interaction, end_date: str, user: discord.Member = None, role: discord.Role = None):
     if not (str(interaction.user.id) in self.bot.admins or interaction.user.guild_permissions.administrator) or str(interaction.user.id) in self.bot.blockedAdmins:
         return await interaction.response.send_message(content=f"⛔ You are not allowed to use this command.")      
@@ -759,6 +740,7 @@ class Commands(commands.Cog):
 
   @guild_only
   @app_commands.command(description="removes a timeout for user.")
+  @dynamic_guild_cooldown(seconds=15)
   async def remove_timeout(self, interaction: discord.Interaction, user: discord.Member = None, role: discord.Role = None):
     if not (str(interaction.user.id) in self.bot.admins or interaction.user.guild_permissions.administrator) or str(interaction.user.id) in self.bot.blockedAdmins:
         return await interaction.response.send_message(content=f"⛔ You are not allowed to use this command.")      
@@ -794,6 +776,7 @@ class Commands(commands.Cog):
     
   @guild_only
   @app_commands.command(description="Deletes running matchmaking and allows starting a new one.")
+  @dynamic_guild_cooldown(seconds=15)
   async def delete_mm(self, interaction: discord.Interaction, region: Literal["EMEA", "NA", "SA", "APAC"]):
     await interaction.response.defer(ephemeral=True)
 
@@ -824,6 +807,7 @@ class Commands(commands.Cog):
  
   @guild_only
   @app_commands.command(description="set tryhard/casual role for a user.")
+  @dynamic_guild_cooldown(seconds=15)
   async def enthusiasm_change(self, interaction: discord.Interaction, user: discord.Member, enthusiasm: Literal["tryhard", "casual"]):
     await interaction.response.defer()
     if not (str(interaction.user.id) in self.bot.admins or interaction.user.guild_permissions.administrator) or str(interaction.user.id) in self.bot.blockedAdmins:
@@ -846,6 +830,7 @@ class Commands(commands.Cog):
        
   @guild_only
   @app_commands.command(description="removes a user from in match status.")
+  @dynamic_guild_cooldown(seconds=15)
   async def remove_from_match_status(self, interaction: discord.Interaction, user: discord.Member):
     await interaction.response.defer()
     
@@ -869,6 +854,7 @@ class Commands(commands.Cog):
 
   @guild_only
   @app_commands.command(description="view a users stats.")
+  @dynamic_guild_cooldown(seconds=15)
   async def check_stats(self, interaction: discord.Interaction, user: discord.Member):
     user_data = mongodb.findUserOptions(user.id, interaction.guild.id) 
     guild_options = mongodb.findGuildOptions(interaction.guild.id)

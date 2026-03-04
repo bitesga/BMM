@@ -5,7 +5,7 @@ from discord.app_commands import guild_only
 import asyncio
 from mongodb import findGuildOptions, saveGuild
 
-from utils import LinkButton, View
+from utils import LinkButton, View, dynamic_guild_cooldown
 
 class General(commands.Cog):
   
@@ -28,6 +28,7 @@ class General(commands.Cog):
         
          
   @app_commands.command(description="want to give something back? cool. learn how.")
+  @dynamic_guild_cooldown(seconds=15)
   async def tip(self, interaction: discord.Interaction):
     viewItems = [LinkButton("Paypal", "https://paypal.me/RoyalGamerBs", "<:paypal:1226193285526327376>")]
     embed = discord.Embed(title="", description="""Hey, we are a young development team and - among other things - developed this Discord PL bot here.
@@ -45,6 +46,7 @@ class General(commands.Cog):
   
   
   @app_commands.command(description="display user commands")
+  @dynamic_guild_cooldown(seconds=15)
   async def help(self, interaction: discord.Interaction):
     helpEmbed = discord.Embed(title="User Commands", description="""
 - `/save_id` to register and set your region
@@ -63,6 +65,7 @@ class General(commands.Cog):
      
 
   @app_commands.command(description="display admin commands")
+  @dynamic_guild_cooldown(seconds=15)
   async def help_admin(self, interaction: discord.Interaction):
     helpEmbed = discord.Embed(title="Admin Commands", description="""
 ℹ️ For `/add_points`, `/add_wins`, `/add_matches_played`, `/add_winstreak` pass the same user multiple times if you want to edit only one or two.
@@ -118,6 +121,7 @@ class General(commands.Cog):
      
   @guild_only
   @app_commands.command(description="creates all needed pl channels")
+  @dynamic_guild_cooldown(seconds=15)
   async def install(self, interaction: discord.Interaction):
     if not (str(interaction.user.id) in self.bot.admins or interaction.user.guild_permissions.administrator) or str(interaction.user.id) in self.bot.blockedAdmins:
           return await interaction.response.send_message(content="⛔ You are not allowed to use this command.")
@@ -133,6 +137,7 @@ class General(commands.Cog):
      
   @guild_only
   @app_commands.command(description="deletes all channels and roles and leaves the server")
+  @dynamic_guild_cooldown(seconds=15)
   async def uninstall(self, interaction: discord.Interaction):
     if not (str(interaction.user.id) in self.bot.admins or interaction.user.guild_permissions.administrator) or str(interaction.user.id) in self.bot.blockedAdmins:
         return await interaction.response.send_message(content=f"⛔ You are not allowed to use this command.")

@@ -4,6 +4,7 @@ from discord import app_commands
 from discord.app_commands import guild_only
 import mongodb
 from typing import Literal
+from utils import dynamic_guild_cooldown
 
 from cogs.BotAdmin import resetGuildElo
 
@@ -29,6 +30,7 @@ class GuildSettings(commands.Cog):
          
 
   @app_commands.command(description="lists all guild settings.")
+  @dynamic_guild_cooldown(seconds=15)
   async def list_settings(self, interaction: discord.Interaction):
     # Retrieve guild options from MongoDB
     guild_options = mongodb.findGuildOptions(interaction.guild.id)
@@ -144,6 +146,7 @@ class GuildSettings(commands.Cog):
 
   @guild_only       
   @app_commands.command(description="set timezone for your timeouts and lb updates")
+  @dynamic_guild_cooldown(seconds=15)
   async def timezone(self, interaction: discord.Interaction, 
 			timezone: Literal[
         "UTC", "CET", "JST", "EDT", "EST", "BRT", "PST", "GMT", "AEST", "SAST",
@@ -197,6 +200,7 @@ class GuildSettings(commands.Cog):
   
   @guild_only
   @app_commands.command(description="sets max elo difference to host")
+  @dynamic_guild_cooldown(seconds=15)
   async def elo_boundary(self, interaction: discord.Interaction, limit: int):
     if not (str(interaction.user.id) in self.bot.admins or interaction.user.guild_permissions.administrator) or str(interaction.user.id) in self.bot.blockedAdmins:
         return await interaction.response.send_message(content=f"⛔ You are not allowed to use this command.")
@@ -213,6 +217,7 @@ class GuildSettings(commands.Cog):
 
   @guild_only
   @app_commands.command(description="sets matchmaking cooldown in seconds")
+  @dynamic_guild_cooldown(seconds=15)
   async def set_mm_cooldown(self, interaction: discord.Interaction, cooldown_seconds: int):
     if not (str(interaction.user.id) in self.bot.admins or interaction.user.guild_permissions.administrator) or str(interaction.user.id) in self.bot.blockedAdmins:
         return await interaction.response.send_message(content=f"⛔ You are not allowed to use this command.")
@@ -232,6 +237,7 @@ class GuildSettings(commands.Cog):
 
   @guild_only
   @app_commands.command(description="sets next season reset day")
+  @dynamic_guild_cooldown(seconds=15)
   async def set_season_end(self, interaction: discord.Interaction, next_reset_date: str):
     if not (str(interaction.user.id) in self.bot.admins or interaction.user.guild_permissions.administrator) or str(interaction.user.id) in self.bot.blockedAdmins:
         return await interaction.response.send_message(content=f"⛔ You are not allowed to use this command.")
@@ -248,6 +254,7 @@ class GuildSettings(commands.Cog):
       
   @guild_only
   @app_commands.command(description="enables/disables all roles lbs")
+  @dynamic_guild_cooldown(seconds=15)
   async def lb_all_roles(self, interaction: discord.Interaction):
     if not (str(interaction.user.id) in self.bot.admins or interaction.user.guild_permissions.administrator) or str(interaction.user.id) in self.bot.blockedAdmins:
         return await interaction.response.send_message(content=f"⛔ You are not allowed to use this command.")
@@ -269,6 +276,7 @@ class GuildSettings(commands.Cog):
      
   @guild_only
   @app_commands.command(description="sets max amount of players to display on lb")
+  @dynamic_guild_cooldown(seconds=15)
   async def lb_player_limit(self, interaction: discord.Interaction, limit: int):
     if not (str(interaction.user.id) in self.bot.admins or interaction.user.guild_permissions.administrator) or str(interaction.user.id) in self.bot.blockedAdmins:
         return await interaction.response.send_message(content=f"⛔ You are not allowed to use this command.")
@@ -286,6 +294,7 @@ class GuildSettings(commands.Cog):
      
   @guild_only
   @app_commands.command(description="enables/disables dbl point weekends for negative elo players")
+  @dynamic_guild_cooldown(seconds=15)
   async def dbl_point_weekends_neg_elo(self, interaction: discord.Interaction):
     if not (str(interaction.user.id) in self.bot.admins or interaction.user.guild_permissions.administrator) or str(interaction.user.id) in self.bot.blockedAdmins:
         return await interaction.response.send_message(content=f"⛔ You are not allowed to use this command.")
@@ -307,6 +316,7 @@ class GuildSettings(commands.Cog):
      
   @guild_only
   @app_commands.command(description="enables/disables dbl point weekends")
+  @dynamic_guild_cooldown(seconds=15)
   async def dbl_point_weekends(self, interaction: discord.Interaction):
     if not (str(interaction.user.id) in self.bot.admins or interaction.user.guild_permissions.administrator) or str(interaction.user.id) in self.bot.blockedAdmins:
         return await interaction.response.send_message(content=f"⛔ You are not allowed to use this command.")
@@ -328,6 +338,7 @@ class GuildSettings(commands.Cog):
     
   @guild_only
   @app_commands.command(description="enables/disables threads")
+  @dynamic_guild_cooldown(seconds=15)
   async def matchchannel_mode(self, interaction: discord.Interaction):
     if not (str(interaction.user.id) in self.bot.admins or interaction.user.guild_permissions.administrator) or str(interaction.user.id) in self.bot.blockedAdmins:
         return await interaction.response.send_message(content=f"⛔ You are not allowed to use this command.")
@@ -350,6 +361,7 @@ class GuildSettings(commands.Cog):
 
   @guild_only
   @app_commands.command(description="sets if players in queue are shown")
+  @dynamic_guild_cooldown(seconds=15)
   async def anonymous_queues(self, interaction: discord.Interaction):
     if not (str(interaction.user.id) in self.bot.admins or interaction.user.guild_permissions.administrator) or str(interaction.user.id) in self.bot.blockedAdmins:
         return await interaction.response.send_message(content=f"⛔ You are not allowed to use this command.")
@@ -371,6 +383,7 @@ class GuildSettings(commands.Cog):
      
   @guild_only
   @app_commands.command(description="enables/disables higher level players joining lower mms")
+  @dynamic_guild_cooldown(seconds=15)
   async def downward_joins(self, interaction: discord.Interaction):
     if not (str(interaction.user.id) in self.bot.admins or interaction.user.guild_permissions.administrator) or str(interaction.user.id) in self.bot.blockedAdmins:
         return await interaction.response.send_message(content=f"⛔ You are not allowed to use this command.")
@@ -392,6 +405,7 @@ class GuildSettings(commands.Cog):
      
   @guild_only
   @app_commands.command(description="enables/disables mm seperation")
+  @dynamic_guild_cooldown(seconds=15)
   async def seperate_mm(self, interaction: discord.Interaction, minimum_trophies: int, minimum_3v3_wins: int):
     if not (str(interaction.user.id) in self.bot.admins or interaction.user.guild_permissions.administrator) or str(interaction.user.id) in self.bot.blockedAdmins:
         return await interaction.response.send_message(content=f"⛔ You are not allowed to use this command.")
@@ -421,6 +435,7 @@ class GuildSettings(commands.Cog):
 
   @guild_only
   @app_commands.command(description="enables/disables mm seperation by up to 6 roles")
+  @dynamic_guild_cooldown(seconds=15)
   async def seperate_mm_roles(self, interaction: discord.Interaction, good_player_role: discord.Role, player_role2: discord.Role,
     player_role3: discord.Role = None, player_role4: discord.Role = None, player_role5: discord.Role = None, player_role6: discord.Role = None):
     if not (str(interaction.user.id) in self.bot.admins or interaction.user.guild_permissions.administrator) or str(interaction.user.id) in self.bot.blockedAdmins:
@@ -459,6 +474,7 @@ class GuildSettings(commands.Cog):
 
   @guild_only
   @app_commands.command(description="resets the elo.")
+  @dynamic_guild_cooldown(seconds=15)
   async def reset_elo(self, interaction: discord.Interaction, new_season_name: str, next_reset_date: str):
     if not interaction.user.guild_permissions.administrator or str(interaction.user.id) in self.bot.blockedAdmins:
         return await interaction.response.send_message(content=f"⛔ You are not allowed to use this command.")
@@ -478,6 +494,7 @@ class GuildSettings(commands.Cog):
      
   @guild_only
   @app_commands.command(description="toggles between the plain point system and the rank system")
+  @dynamic_guild_cooldown(seconds=15)
   async def elo_system(self, interaction: discord.Interaction):
     if not interaction.user.guild_permissions.administrator or str(interaction.user.id) in self.bot.blockedAdmins:
         return await interaction.response.send_message(content=f"⛔ You are not allowed to use this command.")

@@ -2,7 +2,7 @@ from discord.ext import commands, tasks
 import discord, datetime, pytz
 from discord.app_commands import guild_only
 from discord import app_commands
-from utils import currentFolder
+from utils import currentFolder, dynamic_guild_cooldown
 
 
 format = "%d.%m.%Y, %H:%M"
@@ -48,6 +48,7 @@ class ServerList(commands.Cog):
   # Delete player ID
   @guild_only
   @app_commands.command(description="look up invite link for a server by id or name")
+  @dynamic_guild_cooldown(seconds=15)
   async def get_invite_link(self, interaction: discord.Interaction, server: str):
     if interaction.user.id not in botAdmins:
       return await interaction.response.send_message(content="⛔ You are not allowed to use this command.")

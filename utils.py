@@ -1,9 +1,11 @@
 import discord
+from discord import app_commands
 import requests
 import json
 import logging
 import os
 import re
+import time
 
 """
 Load correct env
@@ -94,3 +96,33 @@ class View(discord.ui.View):
 class LinkButton(discord.ui.Button):
   def __init__(self, label, url, emoji=None):
     super().__init__(label=label, style=discord.ButtonStyle.link, url=url, emoji=emoji)
+
+
+def dynamic_guild_cooldown(seconds: int = 15, bot_owner_id: int = 324607583841419276, use_matchmaking_setting: bool = False):
+  cooldowns = {}
+
+  async def predicate(interaction: discord.Interaction) -> bool:
+    if interaction.user.id == bot_owner_id:
+      return True
+
+    cooldown_duration = seconds
+    if use_matchmaking_setting and interaction.guild:
+      import mongodb
+      guild_options = mongodb.findGuildOptions(interaction.guild.id)
+      if guild_options:
+        cooldown_duration = guild_options.get("cooldown_mm", 120)
+
+    guild_id = interaction.guild.id if interaction.guild else 0
+    key = (guild_id, interaction.user.id)
+    current_time = time.time()
+
+    if key in cooldowns:
+      time_passed = current_time - cooldowns[key]
+      if time_passed < cooldown_duration:
+        retry_after = cooldown_duration - time_passed
+        raise app_commands.CommandOnCooldown(None, retry_after)
+
+    cooldowns[key] = current_time
+    return True
+
+  return app_commands.check(predicate)
