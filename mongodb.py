@@ -173,11 +173,8 @@ def deleteUserByDiscordId(discord_id, guild_id):
 
        
 def resetInMatchAndLockedStatus():
-    for user in users.find():
-        user["in_match"] = False
-        saveUser(user)
-    
-    guildMMs.drop()  
+    users.update_many({}, {"$set": {"in_match": False}})
+    guildMMs.delete_many({})
         
 if __name__ == "__main__": 
     pass

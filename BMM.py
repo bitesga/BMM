@@ -318,7 +318,7 @@ class BMM(commands.Bot):
       self.refresh_blocked_admins.start()
 
     try:
-      resetInMatchAndLockedStatus()
+      await asyncio.to_thread(resetInMatchAndLockedStatus)
     except Exception as e:
       self.logger.error(f"Failed to reset in_match/locked status on startup: {str(e)}")
 
