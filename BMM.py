@@ -299,12 +299,12 @@ class BMM(commands.Bot):
         for mmch in matchmakingChannels:
           if mmch:
             await mmch.purge(limit=10, check=lambda m: True)
-            if now.hour == 22:
+            if now.hour == 6:
               await mmch.send("I am back for new matchmakings 🚀")
         if matchesChannel:
           history = [message async for message in matchesChannel.history(limit=1)]
           last_message = history[0] if history else None
-          if (now.hour == 22 and not last_message) or (last_message and "Excited for upcoming matches" not in last_message.content):
+          if (now.hour == 6 and not last_message) or (last_message and "Excited for upcoming matches" not in last_message.content):
               await matchesChannel.send("Excited for upcoming matches <a:Elmofire:1324453688164487219>")
       except discord.errors.Forbidden:
         self.logger.warning(f"No permission to clean server {guild.name}")

@@ -70,11 +70,11 @@ class Commands(commands.Cog):
 
             # Check if matchmaking is closed
             if currentFolder() == "BMM": 
-              if now.replace(hour=21, minute=30, second=0, microsecond=0) <= now < now.replace(hour=22, minute=0, second=0, microsecond=0):
+              if now.replace(hour=5, minute=30, second=0, microsecond=0) <= now < now.replace(hour=6, minute=0, second=0, microsecond=0):
                   return await interaction.edit_original_response(content=f"⛔ Matchmaking is closed. Bot is restarting in {60 - now.minute} minutes!")
 
               # Check if the bot just restarted
-              if now.replace(hour=22, minute=0, second=0, microsecond=0) <= now < now.replace(hour=22, minute=5, second=0, microsecond=0):
+              if now.replace(hour=6, minute=0, second=0, microsecond=0) <= now < now.replace(hour=6, minute=5, second=0, microsecond=0):
                   return await interaction.edit_original_response(content=f"⛔ Bot just restarted. Matchmaking will open in {5 - now.minute} minutes!")
 
             # Validate team code
@@ -206,10 +206,10 @@ class Commands(commands.Cog):
 
           # Time-based matchmaking restrictions
           now = datetime.datetime.now(pytz.timezone("Europe/Berlin"))
-          if now.replace(hour=21, minute=30, second=0, microsecond=0) <= now < now.replace(hour=22, minute=0, second=0, microsecond=0):
+          if now.replace(hour=5, minute=30, second=0, microsecond=0) <= now < now.replace(hour=6, minute=0, second=0, microsecond=0):
               return await interaction.edit_original_response(content=f"⛔ Matchmaking is closed. Bot is restarting in {60 - now.minute} Minutes!")
           
-          if now.replace(hour=22, minute=0, second=0, microsecond=0) <= now < now.replace(hour=22, minute=5, second=0, microsecond=0):
+          if now.replace(hour=6, minute=0, second=0, microsecond=0) <= now < now.replace(hour=6, minute=5, second=0, microsecond=0):
               return await interaction.edit_original_response(content=f"⛔ Bot just restarted. Matchmaking will open in {5 - now.minute} Minutes!")
 
           if not validators.url(f"https://link.brawlstars.com/invite/gameroom/en?tag={team_code.upper()}"):
