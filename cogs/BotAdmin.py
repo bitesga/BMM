@@ -227,56 +227,6 @@ class BotAdmin(commands.Cog):
      await self.__handle_error("dcat",interaction,error)
      
      
-  @app_commands.command(description="whitelist a server")
-  @dynamic_guild_cooldown(seconds=15)
-  async def wl(self, interaction: discord.Interaction, id: str, name: str):
-      if interaction.user.id not in botAdmins:
-          return await interaction.response.send_message(content="⛔ You are not allowed to use this command.")
-
-      await interaction.response.defer()
-
-      with open("allowed.json", "r", encoding="UTF-8") as f:
-          allowedGuilds = json.load(f)
-
-      if id in allowedGuilds:
-          return await interaction.followup.send(content=f"⛔ Server already whitelisted! Id: {id}, Name: {allowedGuilds[id]}.")
-
-      allowedGuilds[id] = name
-      with open("allowed.json", "w", encoding="UTF-8") as f:
-          json.dump(allowedGuilds, f, indent=2)
-
-      await interaction.followup.send(content=f"✅ Server added to whitelist! Id: {id}, Name: {name}.", file=discord.File("allowed.json"))
-    
-  @wl.error
-  async def wl_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
-     await self.__handle_error("wl",interaction,error)
-     
-  
-  @app_commands.command(description="blacklist a server (remove from whitelist)")
-  @dynamic_guild_cooldown(seconds=15)
-  async def bl(self, interaction: discord.Interaction, id: str):
-      if interaction.user.id not in botAdmins:
-          return await interaction.response.send_message(content="⛔ You are not allowed to use this command.")
-
-      await interaction.response.defer()
-
-      with open("allowed.json", "r", encoding="UTF-8") as f:
-          allowedGuilds = json.load(f)
-
-      if not id in allowedGuilds:
-          return await interaction.followup.send(content=f"⛔ Server is not whitelisted!", file=discord.File("allowed.json"))
-
-      del allowedGuilds[id]
-      with open("allowed.json", "w", encoding="UTF-8") as f:
-          json.dump(allowedGuilds, f, indent=2)
-
-      await interaction.followup.send(content=f"✅ Server removed from whitelist!", file=discord.File("allowed.json"))
-    
-  @bl.error
-  async def bl_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
-     await self.__handle_error("bl",interaction,error)          
-             
-     
     #Locks matchmaking
   @app_commands.command(description="locks matchmaking until unlocked.")
   @dynamic_guild_cooldown(seconds=15)

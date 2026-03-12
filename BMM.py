@@ -21,10 +21,6 @@ class BMM(commands.Bot):
     with open("blockedAdmins.json", "r", encoding="UTF-8") as f:
         blockedAdmins = json.load(f)
     self.blockedAdmins = blockedAdmins
-    # Load whitelisted servers
-    with open("allowed.json", "r", encoding="UTF-8") as f:
-        allowedGuilds = json.load(f)
-    self.allowedGuilds = allowedGuilds
     self.validation_lock = asyncio.Lock()
     self._startup_initialized = False
 
@@ -279,8 +275,6 @@ class BMM(commands.Bot):
     except Exception as e:
       self.logger.error(f"Failed to sync app commands: {str(e)}")
 
-    if not self.leave_guilds.is_running():
-      self.leave_guilds.start()
     if not self.refresh_admins.is_running():
       self.refresh_admins.start()
     if not self.refresh_blocked_admins.is_running():
@@ -315,20 +309,6 @@ class BMM(commands.Bot):
             
     
   
-  # Refresh the list of allowed guilds every minute and leave not wled ones
-  @tasks.loop(minutes=1)
-  async def leave_guilds(self):
-    
-    with open("allowed.json", "r", encoding="UTF-8") as f:
-        allowedGuilds = json.load(f)
-    self.allowedGuilds = allowedGuilds
-    
-    for guild in self.guilds:
-      if not str(guild.id) in self.allowedGuilds:
-        await guild.leave()
-        self.logger.info(f"Left unauthorized server: {guild.name}") 
-     
-  
   # Refresh the list of admins every minute
   @tasks.loop(minutes=1)
   async def refresh_admins(self):
@@ -351,18 +331,9 @@ class BMM(commands.Bot):
     self.logger.info("blocked admin list refreshed")
     
     
-  # Leave Guilds on Join or create the channels
+  # Handle setup on join
   async def on_guild_join(self, guild: discord.Guild):
-    with open("allowed.json", "r", encoding="UTF-8") as f:
-        allowedGuilds = json.load(f)    
-    self.allowedGuilds = allowedGuilds
-    
     generalChannel = self.getGeneralChannel(guild)
-    if not str(guild.id) in self.allowedGuilds:
-      await generalChannel.send("This server did not buy this bot. Visit https://discord.gg/txfCgDfDDf to see the prices and contact the support. Until then, bye 👋")
-      self.logger.info(f"Left unauthorized server: {guild.name}") 
-      await guild.leave()
-      return 
     
     await asyncio.sleep(3)
       
