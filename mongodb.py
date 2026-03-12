@@ -155,11 +155,16 @@ def getTopEloPlayers(guild_id, region, role_id=None, enthusiasm=None, limit=1000
     try:
         guild_options = findGuildOptions(guild_id)
         if guild_options["seperate_mm"]:
-            return list(users.find({"matches_played": {"$ne": 0}, "guild_id": guild_id, "region": region, "enthusiasm": enthusiasm}).sort("elo", -1).limit(limit))
+            cursor = users.find({"matches_played": {"$ne": 0}, "guild_id": guild_id, "region": region, "enthusiasm": enthusiasm}).sort("elo", -1)
         elif guild_options["seperate_mm_roles"]:
-            return list(users.find({"matches_played": {"$ne": 0}, "guild_id": guild_id, "region": region, "role": str(role_id)}).sort("elo", -1).limit(limit))
+            cursor = users.find({"matches_played": {"$ne": 0}, "guild_id": guild_id, "region": region, "role": str(role_id)}).sort("elo", -1)
         else:
-            return list(users.find({"matches_played": {"$ne": 0}, "guild_id": guild_id, "region": region}).sort("elo", -1).limit(limit))
+            cursor = users.find({"matches_played": {"$ne": 0}, "guild_id": guild_id, "region": region}).sort("elo", -1)
+
+        if limit is not None:
+            cursor = cursor.limit(limit)
+
+        return list(cursor)
     except Exception as e:
         logger.error(f"Error fetching top players for guild {guild_id}: {e}")
         return []

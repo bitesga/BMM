@@ -112,7 +112,7 @@ class GuildSettings(commands.Cog):
     
     embed.add_field(
         name="Leaderboard Player Limit",
-        value=f"Sending up to `{guild_options['lb_limit']}` players per leaderboard",
+        value=f"Showing up to `{guild_options['lb_limit']}` players per leaderboard page",
         inline=False
     )
     embed.add_field(

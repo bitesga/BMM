@@ -51,6 +51,7 @@ class General(commands.Cog):
     helpEmbed = discord.Embed(title="User Commands", description="""
 - `/save_id` to register and set your region
 - `/check_stats` to view a users stats
+- `/leaderboard` to view the leaderboard
 - `/matchmaking` to start a matchmaking
 - `/maps` to checkout the mappool
 - `/validate_result` makes the bot validate a match if btn doesnt react
@@ -110,7 +111,7 @@ class General(commands.Cog):
     
     helpEmbed.add_field(name="Leaderboard", value="""
 - `/lb_all_roles` toggles if all roles get there lb or only the top role
-- `/lb_player_limit` sets maximum amount of players for lb per region and role""")
+  - `/lb_player_limit` sets maximum amount of players per leaderboard page""")
     
     await interaction.response.send_message(embed=helpEmbed)
 
