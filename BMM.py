@@ -4,7 +4,7 @@ import asyncio
 from mongodb import resetInMatchAndLockedStatus, findGuildOptions, saveGuild
 from datetime import datetime
 import pytz
-from utils import logger, loadEnv
+from utils import loadEnv
 
       
 class BMM(commands.Bot):
@@ -12,7 +12,6 @@ class BMM(commands.Bot):
   
   def __init__(self, intents):
     super().__init__(command_prefix="----------", intents=intents, activity=discord.Activity(type=discord.ActivityType.playing, name="Discord PL!"))
-    self.logger = logger
     # Load admins set
     with open("admins.json", "r", encoding="UTF-8") as f:
         admins = json.load(f)
@@ -58,7 +57,7 @@ class BMM(commands.Bot):
                         guild_options[key] = role.id
                         roles[key] = role
                     except Exception as e:
-                        self.logger.warning(f"Failed to create role {key}: {str(e)}")
+                      print(f"Failed to create role {key}: {str(e)}")
 
         # Speichere die aktualisierten guild_options
         saveGuild(guild_options)
@@ -268,12 +267,12 @@ class BMM(commands.Bot):
         try:
           await self.load_extension(extension)
         except Exception as e:
-          self.logger.error(f"Failed to load extension {extension}: {str(e)}")
+          print(f"Failed to load extension {extension}: {str(e)}")
 
     try:
       await self.tree.sync()
     except Exception as e:
-      self.logger.error(f"Failed to sync app commands: {str(e)}")
+      print(f"Failed to sync app commands: {str(e)}")
 
     if not self.refresh_admins.is_running():
       self.refresh_admins.start()
@@ -283,7 +282,7 @@ class BMM(commands.Bot):
     try:
       await asyncio.to_thread(resetInMatchAndLockedStatus)
     except Exception as e:
-      self.logger.error(f"Failed to reset in_match/locked status on startup: {str(e)}")
+      print(f"Failed to reset in_match/locked status on startup: {str(e)}")
 
     now = datetime.now(pytz.timezone("Europe/Berlin"))
     for guild in self.guilds:
@@ -301,9 +300,9 @@ class BMM(commands.Bot):
           if (now.hour == 6 and not last_message) or (last_message and "Excited for upcoming matches" not in last_message.content):
               await matchesChannel.send("Excited for upcoming matches <a:Elmofire:1324453688164487219>")
       except discord.errors.Forbidden:
-        self.logger.warning(f"No permission to clean server {guild.name}")
+        print(f"No permission to clean server {guild.name}")
       except Exception as e:
-        self.logger.warning(f"Unknown error cleaning {guild.name}: {str(e)}")
+        print(f"Unknown error cleaning {guild.name}: {str(e)}")
 
     self._startup_initialized = True
             
@@ -312,23 +311,21 @@ class BMM(commands.Bot):
   # Refresh the list of admins every minute
   @tasks.loop(minutes=1)
   async def refresh_admins(self):
-    self.logger.info("starting admin refresh")
-      
+    print("starting admin refresh")
     with open("admins.json", "r", encoding="UTF-8") as f:
         admins = json.load(f)
     self.admins = admins
-    self.logger.info("admin list refreshed")
+    print("admin list refreshed")
     
   
   # Refresh the list of blocked admins every minute
   @tasks.loop(minutes=1)
   async def refresh_blocked_admins(self):
-    self.logger.info("starting blocked admin refresh")
-      
+    print("starting blocked admin refresh")
     with open("blockedAdmins.json", "r", encoding="UTF-8") as f:
         blockedAdmins = json.load(f)
     self.blockedAdmins = blockedAdmins
-    self.logger.info("blocked admin list refreshed")
+    print("blocked admin list refreshed")
     
     
   # Handle setup on join

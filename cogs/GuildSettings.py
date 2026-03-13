@@ -24,7 +24,7 @@ class GuildSettings(commands.Cog):
     elif isinstance(error, app_commands.CheckFailure):
         await interaction.response.send_message("❌ You do not have permission to use this command.", ephemeral=True)
     else:
-        self.bot.logger.error(f"Unhandled error in \"{function}\" command: {error}")
+        print(f"Unhandled error in \"{function}\" command: {error}")
         await interaction.response.send_message(f"❌ An unknown error occurred: {error}", ephemeral=True)
         
          
@@ -461,7 +461,7 @@ class GuildSettings(commands.Cog):
             roles.append(player_role6.id)
         
         guild_options["mm_roles"] = roles
-        self.bot.logger.info(f"Roles {guild_options['mm_roles']}")
+        print(f"Roles {guild_options['mm_roles']}")
         mongodb.saveGuild(guild_options)
         roleslisting = ", ".join(interaction.guild.get_role(role_id).mention for role_id in roles)
         return await interaction.edit_original_response(content=f"✌️ Seperating matchmaking using these roles: {roleslisting}.")

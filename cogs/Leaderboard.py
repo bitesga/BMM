@@ -11,7 +11,7 @@ from discord.app_commands import guild_only
 import mongodb
 import pytz
 
-from utils import logger, dynamic_guild_cooldown
+from utils import dynamic_guild_cooldown
 
 
 with open("elosystems.json", "r", encoding="UTF-8") as f:
@@ -290,8 +290,8 @@ class Leaderboard(commands.Cog):
             return True
         except discord.NotFound:
             return False
-        except Exception as e:
-            self.bot.logger.error(f"Unexpected leaderboard interaction error: {str(e)}")
+        except Exception:
+            print("Unexpected leaderboard interaction error")
             return False
 
     @guild_only
@@ -322,7 +322,7 @@ class Leaderboard(commands.Cog):
         original_error = getattr(error, "original", error)
 
         if isinstance(original_error, discord.NotFound) and getattr(original_error, "code", None) == 10062:
-            self.bot.logger.warning(f"Interaction expired in \"{function}\" command (10062 Unknown interaction).")
+            print(f"Interaction expired in \"{function}\" command (10062 Unknown interaction).")
             return
 
         if isinstance(error, app_commands.CommandOnCooldown):
@@ -334,7 +334,7 @@ class Leaderboard(commands.Cog):
         elif isinstance(error, app_commands.CheckFailure):
             await self._safe_interaction_reply(interaction, "❌ You do not have permission to use this command.", ephemeral=True)
         else:
-            logger.error(f"Unhandled error in \"{function}\" command: {error}")
+            print(f"Unhandled error in \"{function}\" command: {error}")
             await self._safe_interaction_reply(interaction, f"❌ An unknown error occurred: {error}", ephemeral=True)
 
 

@@ -30,11 +30,11 @@ class Commands(commands.Cog):
         await interaction.response.send_message(content=content, ephemeral=ephemeral)
       return True
     except discord.NotFound as e:
-      self.bot.logger.warning(f"Interaction reply skipped (likely expired/unknown interaction): {str(e)}")
+      print(f"Interaction reply skipped (likely expired/unknown interaction): {str(e)}")
     except discord.HTTPException as e:
-      self.bot.logger.warning(f"Interaction reply failed with HTTPException: {str(e)}")
+      print(f"Interaction reply failed with HTTPException: {str(e)}")
     except Exception as e:
-      self.bot.logger.error(f"Unexpected error while replying to interaction: {str(e)}")
+      print(f"Unexpected error while replying to interaction: {str(e)}")
     return False
     
 
@@ -42,7 +42,7 @@ class Commands(commands.Cog):
     original_error = getattr(error, "original", error)
 
     if isinstance(original_error, discord.NotFound) and getattr(original_error, "code", None) == 10062:
-      self.bot.logger.warning(f"Interaction expired in \"{function}\" command (10062 Unknown interaction).")
+      print(f"Interaction expired in \"{function}\" command (10062 Unknown interaction).")
       return
 
     if isinstance(error, app_commands.CommandOnCooldown):
@@ -54,7 +54,7 @@ class Commands(commands.Cog):
     elif isinstance(error, app_commands.CheckFailure):
       await self._safe_interaction_reply(interaction, "❌ You do not have permission to use this command.", ephemeral=True)
     else:
-      self.bot.logger.error(f"Unhandled error in \"{function}\" command: {error}")
+      print(f"Unhandled error in \"{function}\" command: {error}")
       await self._safe_interaction_reply(interaction, f"❌ An unknown error occurred: {error}", ephemeral=True)
     
      
@@ -147,8 +147,7 @@ class Commands(commands.Cog):
             if mongodb.getGuildMM(interaction.guild.id, user_options["region"], enthusiasm.lower()):
                 return await interaction.edit_original_response(content=f"⛔ Another mm for {user_options['region']} {enthusiasm} is already running.")
 
-            # Log matchmaking start
-            self.bot.logger.info(f"{interaction.user.name} starting {user_options['region']} {enthusiasm} mm in {interaction.guild.name}")
+            print(f"{interaction.user.name} starting {user_options['region']} {enthusiasm} mm in {interaction.guild.name}")
 
             # Get channels
             _, matchmakingChannels, matchesChannel, _, auditlogChannel = await self.bot.getChannels(interaction.guild)
@@ -184,8 +183,8 @@ class Commands(commands.Cog):
             await interaction.edit_original_response(content=f"Matchmaking started in {matchmakingChannel.mention}")
 
     except Exception as e:
-        self.bot.logger.error(f"Error in matchmaking command: {e}")
-        await interaction.edit_original_response(content=f"❌ An error occurred: {e}. Please try again later")
+      print(f"Error in matchmaking command: {e}")
+      await interaction.edit_original_response(content=f"❌ An error occurred: {e}. Please try again later")
 
   @matchmaking.error
   async def matchmaking_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
@@ -244,10 +243,8 @@ class Commands(commands.Cog):
           if existing_mm:
               return await interaction.followup.send(content="⛔ Matchmaking for this private room is already running.", ephemeral=True)
 
-          # Announce matchmaking start
           title = f"🏆 {private_room['name'].title()} Lobby 🏆"
-          self.bot.logger.info(f"{interaction.user.name} started private matchmaking for room '{private_room['name']}' with key '{private_key}'.")
-
+          print(f"{interaction.user.name} started private matchmaking for room '{private_room['name']}' with key '{private_key}'.")
       
           # Get the matchmaking channel
           _, matchmakingChannels, matchesChannel, _, auditlogChannel = await self.bot.getChannels(interaction.guild)
@@ -306,10 +303,10 @@ class Commands(commands.Cog):
       else:
         winning_team, losing_team = match["team2"], match["team1"]
 
-      self.bot.logger.info(f"Match {match_id}: Winning Team: {winning_team}, Losing Team: {losing_team}")
+      print(f"Match {match_id}: Winning Team: {winning_team}, Losing Team: {losing_team}")
       match["team1"], match["team2"] = refreshElos(match["team1"], match["team2"], interaction.guild.id)
       elos_before_evaluation = [player["elo"] for player in match["team1"] + match["team2"]]
-      self.bot.logger.debug(f"Elos before Evaluation of Match #{match_id} on Map {match['bs_map']} in {interaction.guild.name}:\n\t{elos_before_evaluation}")
+      print(f"Elos before Evaluation of Match #{match_id} on Map {match['bs_map']} in {interaction.guild.name}:\n\t{elos_before_evaluation}")
 
       
       guild_options = mongodb.findGuildOptions(interaction.guild.id)
@@ -330,7 +327,7 @@ class Commands(commands.Cog):
       eloupdateText = ""
       # Refresh the team elos before using them for audit log
       for i, player in enumerate(match["team1"] + match["team2"]):
-          self.bot.logger.debug(f"Elo change für {player['bs_id']}: {elos_before_evaluation[i]}, {player['elo']}. #{match_id} - {match['bs_map']} - {interaction.guild.name}")
+          print(f"Elo change für {player['bs_id']}: {elos_before_evaluation[i]}, {player['elo']}. #{match_id} - {match['bs_map']} - {interaction.guild.name}")
           elo_change = player["elo"] - elos_before_evaluation[i]
           eloupdateText += f"<@{player['discord_id']}> {'+' if elo_change > 0 else ''}{elo_change} ({elos_before_evaluation[i]} -> {player['elo']})\n"
 
@@ -366,22 +363,22 @@ class Commands(commands.Cog):
       # Ergebnisprüfung
       battle_log = await fetchBattleLog(match["team1"][0]["bs_id"])
       if not battle_log:
-          self.bot.logger.debug(f"Fetching battle log for Team 1 Player BS ID failed {match['team1'][0]['bs_id']}.")
+          print(f"Fetching battle log for Team 1 Player BS ID failed {match['team1'][0]['bs_id']}.")
           return await interaction.edit_original_response(content=f"Could not fetch the battle log for <@{match['team1'][0]['discord_id']}> with BS ID: `{match['team1'][0]['bs_id']}`.")
 
       match["team1"], match["team2"] = refreshElos(match["team1"], match["team2"], interaction.guild.id)
       elos_before_evaluation = [player["elo"] for player in match["team1"] + match["team2"]]
-      self.bot.logger.debug(f"Elos before Evaluation of Match #{match_id} on Map {match['bs_map']} in {interaction.guild.name}:\n\t{elos_before_evaluation}")
+      print(f"Elos before Evaluation of Match #{match_id} on Map {match['bs_map']} in {interaction.guild.name}:\n\t{elos_before_evaluation}")
       match_date = match["match_date"]
           
-      winning_team, _, not_founds = evaluate_winner(battle_log, match["team1"], match["team2"], match["bs_map"], self.bot.logger, match_id, match_date, interaction.guild_id, match["private"])
+      winning_team, _, not_founds = evaluate_winner(battle_log, match["team1"], match["team2"], match["bs_map"], match_id, match_date, interaction.guild_id, match["private"])
 
       if not winning_team:
           if not_founds:
               not_founds_text = ""
               for user in not_founds:
                   not_founds_text += f"\n<@{user['discord_id']}> with BS ID: #{user['bs_id']}"
-              self.bot.logger.debug(f"Map `{match['bs_map']}` found but the following players where not found.\n{not_founds_text}")
+              print(f"Map `{match['bs_map']}` found but the following players where not found.\n{not_founds_text}")
               return await interaction.edit_original_response(content=f"Map `{match['bs_map']}` found but the following players where not found.\n{not_founds_text}\n\nPlease save your correct id: `/save_id`")
           return await interaction.edit_original_response(content=f"Match with the registered players and map `{match['bs_map']}` was not found in the battle log.")
         
@@ -390,7 +387,7 @@ class Commands(commands.Cog):
       eloupdateText = ""
       # Refresh the team elos before using them for audit log
       for i, player in enumerate(match["team1"] + match["team2"]):
-          self.bot.logger.debug(f"Elo change für {player['bs_id']}: {elos_before_evaluation[i]}, {player['elo']}. #{match_id} - {match['bs_map']} - {interaction.guild.name}")
+          print(f"Elo change für {player['bs_id']}: {elos_before_evaluation[i]}, {player['elo']}. #{match_id} - {match['bs_map']} - {interaction.guild.name}")
           elo_change = player["elo"] - elos_before_evaluation[i]
           eloupdateText += f"<@{player['discord_id']}> {'+' if elo_change > 0 else ''}{elo_change} ({elos_before_evaluation[i]} -> {player['elo']})\n"
 

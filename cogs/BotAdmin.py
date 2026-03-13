@@ -270,7 +270,7 @@ class BotAdmin(commands.Cog):
       except discord.errors.Forbidden:
         await interaction.channel.send(f"Missing permissions for sending announce to {guild.name}")
       except Exception as e:
-        self.logger.warning(f"Unknown error announcing in {guild.name}: {str(e)}")
+        print(f"Unknown error announcing in {guild.name}: {str(e)}")
         await interaction.channel.send(f"Unknown error announcing in {guild.name}: {str(e)}")
     return await interaction.edit_original_response(content=f"✅ Message sent:\n\n {formatted_message}")
 
@@ -289,7 +289,7 @@ class BotAdmin(commands.Cog):
     elif isinstance(error, app_commands.CheckFailure):
         await interaction.response.send_message("❌ You do not have permission to use this command.", ephemeral=True)
     else:
-        self.bot.logger.error(f"Unhandled error in \"{function}\" command: {error}")
+      print(f"Unhandled error in \"{function}\" command: {error}")
         await interaction.response.send_message(f"❌ An unknown error occurred: {error}", ephemeral=True)
       
         

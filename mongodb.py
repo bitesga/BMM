@@ -1,5 +1,5 @@
 from pymongo import MongoClient
-from utils import logger, loadEnv
+from utils import loadEnv
 from datetime import datetime
 
 
@@ -29,7 +29,7 @@ def saveGuild(guild_options):
         guilds.update_one({"guild_id": guild_options["guild_id"]}, {"$set": guild_options}, upsert=True)
         return True  # Erfolg
     except Exception as e:
-        logger.error(f"Error saving user {guild_options['guild_id']}: {e}")
+        print(f"Error saving user {guild_options['guild_id']}: {e}")
         return False  # Fehler
 
 
@@ -42,7 +42,7 @@ def findGuildOptions(guild_id):
             "doublePointsWeekendNegativeElo": False, "eloBoundary" : 200, "lb_limit" : 100, "lb_all_roles" : True, "cooldown_mm" : 0
         }
     except Exception as e:
-        logger.error(f"Error finding guild {guild_id}: {e}")
+        print(f"Error finding guild {guild_id}: {e}")
         return None
     
     
@@ -53,7 +53,7 @@ def saveMatch(match):
         matches.update_one({"match_id": match["match_id"]}, {"$set": match}, upsert=True)
         return True  # Erfolg
     except Exception as e:
-        logger.error(f"Error saving user {match['guild_id']}: {e}")
+        print(f"Error saving user {match['guild_id']}: {e}")
         return False  # Fehler
 
 
@@ -61,7 +61,7 @@ def findMatch(match_id):
     try:
         return matches.find_one({"match_id": match_id})
     except Exception as e:
-        logger.error(f"Error finding match {match_id}: {e}")
+        print(f"Error finding match {match_id}: {e}")
         return None
  
  
@@ -72,7 +72,7 @@ def savePrivate(room):
         privates.update_one({"private_key": room["private_key"]}, {"$set": room}, upsert=True)
         return True
     except Exception as e:
-        logger.error(f"Error saving private room {room['private_key']}: {e}")
+        print(f"Error saving private room {room['private_key']}: {e}")
         return False
 
 def findPrivate(private_key, guild_id):
@@ -80,7 +80,7 @@ def findPrivate(private_key, guild_id):
     try:
         return privates.find_one({"private_key": private_key, "guild_id" : guild_id})
     except Exception as e:
-        logger.error(f"Error finding private room with key {private_key} and guild_id {guild_id}: {e}")
+        print(f"Error finding private room with key {private_key} and guild_id {guild_id}: {e}")
         return None
 
 
@@ -89,7 +89,7 @@ def getAllPrivates(guild_id):
     try:
         return list(privates.find({"guild_id" : guild_id}))
     except Exception as e:
-        logger.error(f"Error finding private rooms for guild_id {guild_id}: {e}")
+        print(f"Error finding private rooms for guild_id {guild_id}: {e}")
         return None
     
     
@@ -121,7 +121,7 @@ def saveUser(user_options):
         users.update_one({"discord_id": user_options["discord_id"], "guild_id": user_options["guild_id"]}, {"$set": user_options}, upsert=True)
         return True  # Erfolg
     except Exception as e:
-        logger.error(f"Error saving user {user_options['discord_id']}: {e}")
+        print(f"Error saving user {user_options['discord_id']}: {e}")
         return False  # Fehler
 
 
@@ -132,7 +132,7 @@ def findUserOptions(discord_id, guild_id):
             "in_match": False, "winstreak": 0, "wins": 0, "rank" : None
         }
     except Exception as e:
-        logger.error(f"Error finding user {discord_id}: {e}")
+        print(f"Error finding user {discord_id}: {e}")
         return None
 
 
@@ -140,14 +140,14 @@ def findGuildUsers(guild_id):
     try:
         return users.find({"guild_id": guild_id})
     except Exception as e:
-        logger.error(f"Error finding guild by guild_id {guild_id}: {e}")
+        print(f"Error finding guild by guild_id {guild_id}: {e}")
         return None
    
 def getTop3Global(guild_id):
     try:
         return list(users.find({"matches_played": {"$ne": 0}, "guild_id": guild_id}).sort("elo", -1).limit(3))
     except Exception as e:
-        logger.error(f"Error fetching top players for guild {guild_id}: {e}")
+        print(f"Error fetching top players for guild {guild_id}: {e}")
         return []
     
     
@@ -166,14 +166,14 @@ def getTopEloPlayers(guild_id, region, role_id=None, enthusiasm=None, limit=1000
 
         return list(cursor)
     except Exception as e:
-        logger.error(f"Error fetching top players for guild {guild_id}: {e}")
+        print(f"Error fetching top players for guild {guild_id}: {e}")
         return []
 
 def deleteUserByDiscordId(discord_id, guild_id):
     try:
         return users.delete_one({"discord_id": discord_id, "guild_id": guild_id}).deleted_count > 0
     except Exception as e:
-        logger.error(f"Error deleting user {discord_id}: {e}")
+        print(f"Error deleting user {discord_id}: {e}")
         return False
 
        

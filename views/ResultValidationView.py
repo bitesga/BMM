@@ -1,9 +1,8 @@
-import discord
+﻿import discord
 import mongodb
 import datetime
 import pytz
 import asyncio
-from utils import logger
 
 from utils import simplify, fetchBattleLog
 from elo_system.RankSystem import RankSystem
@@ -34,28 +33,28 @@ async def safe_followup(interaction: discord.Interaction, content: str, ephemera
 
 
 def handle_points_rank_system(winning_team, losing_team, match_id, privatefactor):
-    logger.info(f"Match {match_id}: Applying rank system with privatefactor {privatefactor}")
+    print(f"Match {match_id}: Applying rank system with privatefactor {privatefactor}")
     for player in winning_team:
         rank = rank_system.get_rank_by_points(player["elo"])
-        logger.info(f"Rank for {player['discord_id']}: {rank}")
+        print(f"Rank for {player['discord_id']}: {rank}")
         streak_bonus = rank.ws_bonus if player["winstreak"] > rank.wins_needed else 0
         player["elo"] += ((rank.win_plus + streak_bonus) * privatefactor)
         player["wins"] += 1
         player["winstreak"] += 1
         player["rank"] = rank_system.get_rank_by_points(player["elo"]).rank_name
-        logger.debug(f"Winner {player['bs_id']} updated: +{((rank.win_plus + streak_bonus) * privatefactor)} elo, winstreak +1")
+        print(f"Winner {player['bs_id']} updated: +{((rank.win_plus + streak_bonus) * privatefactor)} elo, winstreak +1")
         player["in_match"] = False
         player["matches_played"] += 1
         mongodb.saveUser(player)
 
     for player in losing_team:
         rank = rank_system.get_rank_by_points(player["elo"])
-        logger.info(f"Rank for {player['discord_id']}: {rank}")
+        print(f"Rank for {player['discord_id']}: {rank}")
         player["elo"] += (rank.lose_minus * privatefactor)
         if player["elo"] < 0: player["elo"] = 0
         player["winstreak"] = 0
         player["rank"] = rank_system.get_rank_by_points(player["elo"]).rank_name
-        logger.debug(f"Loser {player['bs_id']} updated: {(rank.lose_minus * privatefactor)} elo, winstreak reset")
+        print(f"Loser {player['bs_id']} updated: {(rank.lose_minus * privatefactor)} elo, winstreak reset")
         player["in_match"] = False
         player["matches_played"] += 1
         mongodb.saveUser(player)
@@ -63,7 +62,7 @@ def handle_points_rank_system(winning_team, losing_team, match_id, privatefactor
 
 
 def handle_points_point_system(matches, winning_team, losing_team, bonusfactor, bonusfactorNegativeEloPlayers, match_id, privatefactor):
-    logger.info(f"Match {match_id}: Applying point system with bonus factor: {bonusfactor}/{bonusfactorNegativeEloPlayers} and privatefactor {privatefactor}")
+    print(f"Match {match_id}: Applying point system with bonus factor: {bonusfactor}/{bonusfactorNegativeEloPlayers} and privatefactor {privatefactor}")
 
     if matches == 2:
         for player in winning_team:
@@ -71,7 +70,7 @@ def handle_points_point_system(matches, winning_team, losing_team, bonusfactor, 
             player["elo"] += (19 * bonus * privatefactor)
             player["wins"] += 1
             player["winstreak"] += 1
-            logger.debug(f"Match {match_id}: Winner {player['bs_id']} updated: +{19 * bonus * privatefactor} elo, winstreak +1")
+            print(f"Match {match_id}: Winner {player['bs_id']} updated: +{19 * bonus * privatefactor} elo, winstreak +1")
             player["in_match"] = False
             player["matches_played"] += 1
             mongodb.saveUser(player)
@@ -79,7 +78,7 @@ def handle_points_point_system(matches, winning_team, losing_team, bonusfactor, 
         for player in losing_team:
             player["elo"] -= (20 * privatefactor)
             player["winstreak"] = 0
-            logger.debug(f"Match {match_id}: Loser {player['bs_id']} updated: -{(20 * privatefactor)} elo, winstreak reset")
+            print(f"Match {match_id}: Loser {player['bs_id']} updated: -{(20 * privatefactor)} elo, winstreak reset")
             player["in_match"] = False
             player["matches_played"] += 1
             mongodb.saveUser(player)
@@ -89,7 +88,7 @@ def handle_points_point_system(matches, winning_team, losing_team, bonusfactor, 
             player["elo"] += (13 * bonus * privatefactor)
             player["wins"] += 1
             player["winstreak"] += 1
-            logger.debug(f"Match {match_id}: Winner {player['bs_id']} updated: +{13 * bonus * privatefactor} elo, winstreak +1")
+            print(f"Match {match_id}: Winner {player['bs_id']} updated: +{13 * bonus * privatefactor} elo, winstreak +1")
             player["in_match"] = False
             player["matches_played"] += 1
             mongodb.saveUser(player)
@@ -97,7 +96,7 @@ def handle_points_point_system(matches, winning_team, losing_team, bonusfactor, 
         for player in losing_team:
             player["elo"] -= (14 * privatefactor)
             player["winstreak"] = 0
-            logger.debug(f"Match {match_id}: Loser {player['bs_id']} updated: -{(14 * privatefactor)} elo, winstreak reset")
+            print(f"Match {match_id}: Loser {player['bs_id']} updated: -{(14 * privatefactor)} elo, winstreak reset")
             player["in_match"] = False
             player["matches_played"] += 1
             mongodb.saveUser(player)
@@ -115,7 +114,7 @@ def refreshElos(team1, team2, guild_id):
  
 def check_player_in_match(user, battle_team):
     """
-    Prüft, ob ein Spieler (BS-ID) in einem Team vorhanden ist.
+    Pr├╝ft, ob ein Spieler (BS-ID) in einem Team vorhanden ist.
     """
     user_tag = user["bs_id"].replace('#', '')
     for player in battle_team:
@@ -124,29 +123,29 @@ def check_player_in_match(user, battle_team):
     return False
 
 
-def is_valid_team(battle_teams, team1, team2, logger, match_id, match_idx):
+def is_valid_team(battle_teams, team1, team2, match_id, match_idx):
     """
-    Überprüft die Übereinstimmung der Teams Spieler für Spieler und loggt fehlende Spieler.
+    ├£berpr├╝ft die ├£bereinstimmung der Teams Spieler f├╝r Spieler und loggt fehlende Spieler.
     """
     team1_battle, team2_battle = battle_teams
     team1_count, team2_count = 0, 0
     not_founds = []
 
-    # Prüfe Team 1
-    logger.info(f"Match {match_id}: Verifying Team 1 in match {match_idx + 1}...")
+    # Pr├╝fe Team 1
+    print(f"Match {match_id}: Verifying Team 1 in match {match_idx + 1}...")
     for user in team1:
         if not check_player_in_match(user, team1_battle):
-            logger.warning(f"Match {match_id}: Player {user['bs_id']} not found in registered Team 1.")
+            print(f"Match {match_id}: Player {user['bs_id']} not found in registered Team 1.")
             if not user in not_founds:
                 not_founds.append(user)
         else:
             team1_count += 1
 
-    # Prüfe Team 2
-    logger.info(f"Match {match_id}: Verifying Team 2 in match {match_idx + 1}...")
+    # Pr├╝fe Team 2
+    print(f"Match {match_id}: Verifying Team 2 in match {match_idx + 1}...")
     for user in team2:
         if not check_player_in_match(user, team2_battle):
-            logger.warning(f"Match {match_id}: Player {user['bs_id']} not found in registered Team 2.")
+            print(f"Match {match_id}: Player {user['bs_id']} not found in registered Team 2.")
             if not user in not_founds:
                 not_founds.append(user)
         else:
@@ -155,7 +154,7 @@ def is_valid_team(battle_teams, team1, team2, logger, match_id, match_idx):
     return team1_count + team2_count >= 4, not_founds
 
        
-def evaluate_winner(battle_log, team1, team2, bs_map, logger, match_id, match_date, guild_id, private):
+def evaluate_winner(battle_log, team1, team2, bs_map, match_id, match_date, guild_id, private):
     team1_score = 0
     team2_score = 0
     valid_matches = []
@@ -166,14 +165,14 @@ def evaluate_winner(battle_log, team1, team2, bs_map, logger, match_id, match_da
     team1, team2 = refreshElos(team1, team2, guild_id)
     
     # Log initiales Team und Match-Setup
-    logger.info(f"Evaluating Winner for {'private' if private else 'public'} Match #{match_id} on Map {bs_map} in Guild {guild_id} at {match_date.isoformat()}")
-    logger.debug(f"Initial Elos: {[player['elo'] for player in team1 + team2]}")
+    print(f"Evaluating Winner for {'private' if private else 'public'} Match #{match_id} on Map {bs_map} in Guild {guild_id} at {match_date.isoformat()}")
+    print(f"Initial Elos: {[player['elo'] for player in team1 + team2]}")
         
     for idx, match in enumerate(battle_log):
         if len(valid_matches) == 3:
             break
         
-        logger.debug(f"Match {match_id}: Processing match: {match['event']} against map: {bs_map}")
+        print(f"Match {match_id}: Processing match: {match['event']} against map: {bs_map}")
         if not match["event"]["map"]: 
             continue
 
@@ -181,41 +180,41 @@ def evaluate_winner(battle_log, team1, team2, bs_map, logger, match_id, match_da
         strftime_format = "%d/%m/%Y, %H:%M"
         battle_log_match_time = datetime.datetime.strptime(match["battleTime"], "%Y%m%dT%H%M%S.%fZ")
         if battle_log_match_time.replace(tzinfo=datetime.timezone.utc) < match_date.replace(tzinfo=datetime.timezone.utc):
-            logger.info(f"Match {match_id}: Match #{idx + 1} {battle_log_match_time.strftime(strftime_format)} is older than matchmaking start date {match_date.strftime(strftime_format)}. Stopping further search.")
+            print(f"Match {match_id}: Match #{idx + 1} {battle_log_match_time.strftime(strftime_format)} is older than matchmaking start date {match_date.strftime(strftime_format)}. Stopping further search.")
             break
         
-        logger.info(f"Match {match_id}: Battle Log Match {battle_log_match_time.strftime(strftime_format)} is fresher than MM {match_date.strftime(strftime_format)}, continuing search...")
+        print(f"Match {match_id}: Battle Log Match {battle_log_match_time.strftime(strftime_format)} is fresher than MM {match_date.strftime(strftime_format)}, continuing search...")
             
             
         if simplify(match["event"]["map"]) == simplify(bs_map):
-            logger.info(f"Match {match_id}: Map match found, verifying teams...")
+            print(f"Match {match_id}: Map match found, verifying teams...")
             battle_teams = match["battle"]["teams"]
             
-            logger.info(f"Registered Team 1: {team1}")
-            logger.info(f"Registered Team 2: {team2}")
-            logger.info(f"Battle Log Teams: {match['battle']['teams']}")
+            print(f"Registered Team 1: {team1}")
+            print(f"Registered Team 2: {team2}")
+            print(f"Battle Log Teams: {match['battle']['teams']}")
 
-            valid_team1, not_founds1 = is_valid_team(battle_teams, team1, team2, logger, match_id, idx)
-            valid_team2, not_founds2 = is_valid_team(battle_teams, team2, team1, logger, match_id, idx)
+            valid_team1, not_founds1 = is_valid_team(battle_teams, team1, team2, match_id, idx)
+            valid_team2, not_founds2 = is_valid_team(battle_teams, team2, team1, match_id, idx)
             not_founds = not_founds1 if len(not_founds1) < len(not_founds2) else not_founds2
             if valid_team1 or valid_team2:
                 if match["battle"]["result"] in ["victory", "defeat"]:
-                    logger.info(f"Match {match_id}: Valid match found: {match}")
+                    print(f"Match {match_id}: Valid match found: {match}")
                     valid_matches.append(match)
             else:
                 if valid_matches:
-                    logger.warning(f"Match {match_id}: Stopping further processing as valid matches are already found.")
+                    print(f"Match {match_id}: Stopping further processing as valid matches are already found.")
                     break
         else:
             if valid_matches:
-                logger.warning(f"Match {match_id}: Stopping further processing as valid matches are already found.")
+                print(f"Match {match_id}: Stopping further processing as valid matches are already found.")
                 break
     
     
-    logger.info(f"Match {match_id}: Found {len(valid_matches)} valid matches.")
+    print(f"Match {match_id}: Found {len(valid_matches)} valid matches.")
     
     if len(valid_matches) < 2:
-        logger.warning(f"Match {match_id}: Not enough valid matches found.")
+        print(f"Match {match_id}: Not enough valid matches found.")
         return None, None, not_founds
 
     bonusfactor = 2 if datetime.datetime.now(pytz.timezone(guild_options["tz"])).weekday() in [5, 6] and guild_options["doublePointsWeekend"] else 1
@@ -230,16 +229,16 @@ def evaluate_winner(battle_log, team1, team2, bs_map, logger, match_id, match_da
             
         if match["battle"]["starPlayer"]:
             star_player_tag = match["battle"]["starPlayer"]["tag"]
-            logger.info(f"Match {match_id}: Star player found: {star_player_tag}")
+            print(f"Match {match_id}: Star player found: {star_player_tag}")
             for player in team1 + team2:
                 if player["bs_id"].replace('#', '') == star_player_tag.replace('#', ''):
                     bonus = bonusfactor if player["elo"] >= 0 else bonusfactorNegativeEloPlayers
                     player["elo"] += (1 * bonus * privatefactor)
-                    logger.debug(f"Match {match_id}: Starplayer {player['bs_id']} awarded {(1 * bonus * privatefactor)} bonus point (Total elo: {player['elo']})")
+                    print(f"Match {match_id}: Starplayer {player['bs_id']} awarded {(1 * bonus * privatefactor)} bonus point (Total elo: {player['elo']})")
                     if (match["battle"]["result"] == "defeat" and player in team1) or (
                         match["battle"]["result"] == "victory" and player in team2):
                         player["elo"] += (2 * bonus * privatefactor)
-                        logger.debug(f"Match {match_id}: Starplayer {player['bs_id']} in losing team awarded {(2 * bonus * privatefactor)} extra points (Total elo: {player['elo']})")
+                        print(f"Match {match_id}: Starplayer {player['bs_id']} in losing team awarded {(2 * bonus * privatefactor)} extra points (Total elo: {player['elo']})")
  
  
     if team1_score == 2:
@@ -250,7 +249,7 @@ def evaluate_winner(battle_log, team1, team2, bs_map, logger, match_id, match_da
         return None, None, not_founds
         
     
-    logger.info(f"Match {match_id}: Winning Team: {winning_team}, Losing Team: {losing_team}")
+    print(f"Match {match_id}: Winning Team: {winning_team}, Losing Team: {losing_team}")
     if guild_options["ranks"]:
         handle_points_rank_system(winning_team, losing_team, match_id, privatefactor)
     else:
@@ -262,8 +261,8 @@ def evaluate_winner(battle_log, team1, team2, bs_map, logger, match_id, match_da
 
 
 class ResultValidationView(discord.ui.View):
-    def __init__(self, bot, team1, team2, map, logger, match_id, match_date, guild_id, auditlogChannel, thread, private_key):
-        super().__init__(timeout=1800)  # Timeout für die View setzen
+    def __init__(self, bot, team1, team2, map, match_id, match_date, guild_id, auditlogChannel, thread, private_key):
+        super().__init__(timeout=1800)  # Timeout f├╝r die View setzen
         self.bot = bot
         self.team1 = team1
         self.team2 = team2
@@ -271,7 +270,6 @@ class ResultValidationView(discord.ui.View):
         self.match_evaluated = False
         self.message = None
         self.users_voted_cancel = set()
-        self.logger = logger
         self.match_id = match_id
         self.match_date = match_date
         self.guild_id = guild_id
@@ -296,7 +294,7 @@ class ResultValidationView(discord.ui.View):
                 try:
                     return await safe_followup(interaction, "This match has already been evaluated.", ephemeral=True)
                 except Exception as e:
-                    return self.logger.error(f"An error occurred on check result btn for Match #{self.match_id}: {str(e)}")
+                    return print(f"An error occurred on check result btn for Match #{self.match_id}: {str(e)}")
                     
                     
             try:
@@ -306,7 +304,7 @@ class ResultValidationView(discord.ui.View):
 
                     winning_team = match["winner"]
                     embed_validated = discord.Embed(
-                        title=f"✅ Match #{self.match_id} Result Validated ✅",
+                        title=f"Ô£à Match #{self.match_id} Result Validated Ô£à",
                         description=f'Winners: <@{winning_team[0]["discord_id"]}> <@{winning_team[1]["discord_id"]}> <@{winning_team[2]["discord_id"]}>',
                         color=discord.Color.green()
                     )
@@ -320,30 +318,30 @@ class ResultValidationView(discord.ui.View):
                             await asyncio.sleep(30)
                             await self.message.channel.delete()
                         except Exception as e:
-                            self.logger.error(f"An error occurred on deleting thread channel: {str(e)}")
+                            print(f"An error occurred on deleting thread channel: {str(e)}")
                     return
             
             except Exception as e:
-                self.logger.error(f"An error occurred on check result btn for Match #{self.match_id}: {str(e)}")
+                print(f"An error occurred on check result btn for Match #{self.match_id}: {str(e)}")
                 
 
-            # Ergebnisprüfung
+            # Ergebnispr├╝fung
             battle_log = await fetchBattleLog(self.team1[0]["bs_id"])
             if not battle_log:
-                self.logger.debug(f"Fetching battle log for Team 1 Player BS ID failed {self.team1[0]['bs_id']}.")
+                print(f"Fetching battle log for Team 1 Player BS ID failed {self.team1[0]['bs_id']}.")
                 return await safe_followup(interaction, f"Could not fetch the battle log for <@{self.team1[0]['discord_id']}> with BS ID: `{self.team1[0]['bs_id']}`.", ephemeral=True)
 
             self.team1, self.team2 = refreshElos(self.team1, self.team2, interaction.guild.id)
             elos_before_evaluation = [player["elo"] for player in self.team1 + self.team2]
-            logger.debug(f"Elos before Evaluation of Match #{self.match_id} on Map {self.bs_map} in {interaction.guild.name}:\n\t{elos_before_evaluation}")
-            winning_team, _, not_founds = evaluate_winner(battle_log, self.team1, self.team2, self.bs_map, self.logger, self.match_id, self.match_date, interaction.guild_id, self.private_key)
+            print(f"Elos before Evaluation of Match #{self.match_id} on Map {self.bs_map} in {interaction.guild.name}:\n\t{elos_before_evaluation}")
+            winning_team, _, not_founds = evaluate_winner(battle_log, self.team1, self.team2, self.bs_map, self.match_id, self.match_date, interaction.guild_id, self.private_key)
 
             if not winning_team:
                 if not_founds:
                     not_founds_text = ""
                     for user in not_founds:
                         not_founds_text += f"\n<@{user['discord_id']}> with BS ID: #{user['bs_id']}"
-                    self.logger.debug(f"Map `{self.bs_map}` found but the following players where not found.\n{not_founds_text}")
+                    print(f"Map `{self.bs_map}` found but the following players where not found.\n{not_founds_text}")
                     return await safe_followup(interaction, f"Map `{self.bs_map}` found but the following players where not found.\n{not_founds_text}\n\nPlease save your correct id: `/save_id`", ephemeral=True)
                 return await safe_followup(interaction, f"Match with the registered players and map `{self.bs_map}` was not found in the battle log.", ephemeral=True)
 
@@ -355,7 +353,7 @@ class ResultValidationView(discord.ui.View):
             eloupdateText = ""
             # Refresh the team elos before using them for audit log
             for i, player in enumerate(self.team1 + self.team2):
-                logger.debug(f"Elo change für {player['bs_id']}: {elos_before_evaluation[i]}, {player['elo']}. #{self.match_id} - {self.bs_map} - {interaction.guild.name}")
+                print(f"Elo change f├╝r {player['bs_id']}: {elos_before_evaluation[i]}, {player['elo']}. #{self.match_id} - {self.bs_map} - {interaction.guild.name}")
                 elo_change = player["elo"] - elos_before_evaluation[i]
                 eloupdateText += f"<@{player['discord_id']}> {'+' if elo_change > 0 else ''}{elo_change} ({elos_before_evaluation[i]} -> {player['elo']})\n"
 
@@ -365,7 +363,7 @@ class ResultValidationView(discord.ui.View):
             self.match_evaluated = True
                 
             embed_validated = discord.Embed(
-                title=f"✅ Match #{self.match_id} Result Validated ✅",
+                title=f"Ô£à Match #{self.match_id} Result Validated Ô£à",
                 description=f'Winners: <@{winning_team[0]["discord_id"]}> <@{winning_team[1]["discord_id"]}> <@{winning_team[2]["discord_id"]}>',
                 color=discord.Color.green()
             )
@@ -401,7 +399,7 @@ class ResultValidationView(discord.ui.View):
         self.users_voted_cancel.add(interaction.user.id)
 
         embed = discord.Embed(
-            title=f"🏆 Match #{self.match_id} Result Validation 🏆",
+            title=f"­ƒÅå Match #{self.match_id} Result Validation ­ƒÅå",
             description=f"Click the button below to validate the match result.\nResults must be submitted within 30 minutes.\nVotes for cancel: {len(self.users_voted_cancel)}/4",
             color=discord.Color.blurple()
         )
@@ -418,7 +416,7 @@ class ResultValidationView(discord.ui.View):
 
             self.match_evaluated = True
             embed_validated = discord.Embed(
-                title=f"🚫 Match #{self.match_id} Cancelled 🚫",
+                title=f"­ƒÜ½ Match #{self.match_id} Cancelled ­ƒÜ½",
                 description=f'Players can join a new natch now.',
             )
             
@@ -442,7 +440,7 @@ class ResultValidationView(discord.ui.View):
             return
         
         if not ((str(interaction.user.id) in self.bot.admins or interaction.user.guild_permissions.administrator) and not str(interaction.user.id) in self.bot.blockedAdmins):
-            return await safe_followup(interaction, "⛔ This button is reserved for admins.", ephemeral=True)
+            return await safe_followup(interaction, "Ôøö This button is reserved for admins.", ephemeral=True)
 
         # Benutzer in der Datenbank aktualisieren
         for user in self.team1 + self.team2:
@@ -451,7 +449,7 @@ class ResultValidationView(discord.ui.View):
 
         self.match_evaluated = True
         embed_validated = discord.Embed(
-            title=f"🚫 Match #{self.match_id} Cancelled 🚫",
+            title=f"­ƒÜ½ Match #{self.match_id} Cancelled ­ƒÜ½",
             description=f'Players can join a new natch now.',
         )
         
@@ -469,24 +467,24 @@ class ResultValidationView(discord.ui.View):
         
     async def on_timeout(self):
         """
-        Funktion, die ausgeführt wird, wenn der Button nach Timeout deaktiviert wird.
+        Funktion, die ausgef├╝hrt wird, wenn der Button nach Timeout deaktiviert wird.
         """
         
         _, _, _, _, auditlogChannel = await self.bot.getChannels(self.bot.get_guild(self.guild_id))
         self.auditlogChannel = auditlogChannel
         
         # Logging: Start der Timeout-Funktion
-        self.logger.info(f"Starting timeout handler for Match #{self.match_id}.")
+        print(f"Starting timeout handler for Match #{self.match_id}.")
         
         try:
             match = mongodb.findMatch(str(self.match_id))
             if match["validated"]:
-                self.logger.info(f"Match evaluated, updating embed #{self.match_id}.")
+                print(f"Match evaluated, updating embed #{self.match_id}.")
                 self.match_evaluated = True
 
                 winning_team = match["winner"]
                 embed_validated = discord.Embed(
-                    title=f"✅ Match #{self.match_id} Result Validated ✅",
+                    title=f"Ô£à Match #{self.match_id} Result Validated Ô£à",
                     description=f'Winners: <@{winning_team[0]["discord_id"]}> <@{winning_team[1]["discord_id"]}> <@{winning_team[2]["discord_id"]}>',
                     color=discord.Color.green()
                 )
@@ -495,81 +493,81 @@ class ResultValidationView(discord.ui.View):
                     await self.message.edit(embed=embed_validated, view=None)
                 
                 if self.thread and self.message:
-                    self.logger.info(f"deleting thread channel #{self.match_id}.")
+                    print(f"deleting thread channel #{self.match_id}.")
                     try:
                         await self.message.channel.send("Deleting thread channel in 30 seconds <a:loading:1324279901234397224>")
                         await asyncio.sleep(30)
                         await self.message.channel.delete()
                     except Exception as e:
-                        self.logger.error(f"An error occurred on deleting thread channel: {str(e)}")
+                        print(f"An error occurred on deleting thread channel: {str(e)}")
                 return
         
         except Exception as e:
-            self.logger.error(f"An error occurred on check result btn for Match #{self.match_id}: {str(e)}")
+            print(f"An error occurred on check result btn for Match #{self.match_id}: {str(e)}")
                 
                 
 
         timeout_message = discord.Embed(
-            title=f"⏳ Match #{self.match_id} Result Validation Timed Out ⏳",
+            title=f"ÔÅ│ Match #{self.match_id} Result Validation Timed Out ÔÅ│",
             description="Result not validated. Start a new match and try again.",
             color=discord.Color.red()
         )
 
 
         if not self.match_evaluated:
-            self.logger.info(f"Match #{self.match_id} on map {self.bs_map} has not been evaluated yet. Proceeding with result validation.")
+            print(f"Match #{self.match_id} on map {self.bs_map} has not been evaluated yet. Proceeding with result validation.")
             
-            # Ergebnisprüfung
+            # Ergebnispr├╝fung
             try:
-                self.logger.debug(f"Fetching battle log for Team 1 Player BS ID: {self.team1[0]['bs_id']}.")
+                print(f"Fetching battle log for Team 1 Player BS ID: {self.team1[0]['bs_id']}.")
                 battle_log = await fetchBattleLog(self.team1[0]["bs_id"])
 
                 if not battle_log:
-                    self.logger.warning(f"Battle log not found for Match #{self.match_id}. Sending timeout message.")
+                    print(f"Battle log not found for Match #{self.match_id}. Sending timeout message.")
                     if self.message:
                         await self.message.edit(embed=timeout_message, view=None)
                        
                     if self.auditlogChannel: 
-                        await self.auditlogChannel.send(embed=discord.Embed(title=f"⚠️ Match #{self.match_id} on map {self.bs_map} validation timed out. No BattleLog found. ⚠️",description="", color=discord.Color.yellow()))
+                        await self.auditlogChannel.send(embed=discord.Embed(title=f"ÔÜá´©Å Match #{self.match_id} on map {self.bs_map} validation timed out. No BattleLog found. ÔÜá´©Å",description="", color=discord.Color.yellow()))
                     return
 
-                self.logger.debug(f"Evaluating winner for Match #{self.match_id}.")
+                print(f"Evaluating winner for Match #{self.match_id}.")
                 self.team1, self.team2 = refreshElos(self.team1, self.team2, self.guild_id)
                 elos_before_evaluation = [player["elo"] for player in self.team1 + self.team2]
-                logger.debug(f"Elos davor {elos_before_evaluation}")
-                winning_team, _, not_founds = evaluate_winner(battle_log, self.team1, self.team2, self.bs_map, self.logger, self.match_id, self.match_date, self.guild_id, self.private_key)
+                print(f"Elos davor {elos_before_evaluation}")
+                winning_team, _, not_founds = evaluate_winner(battle_log, self.team1, self.team2, self.bs_map, self.match_id, self.match_date, self.guild_id, self.private_key)
 
                 if not winning_team:
                     if not_founds:
                         not_founds_text = ""
                         for user in not_founds:
                             not_founds_text += f"\n<@{user['discord_id']} with BS ID: #{user['bs_id']}"
-                            self.logger.warning(f"Map `{self.bs_map}` was found but the following players where not found.\n{not_founds_text}")
+                            print(f"Map `{self.bs_map}` was found but the following players where not found.\n{not_founds_text}")
                     else:
-                        self.logger.warning(f"No winner found for Match #{self.match_id}. Sending timeout message.")
+                        print(f"No winner found for Match #{self.match_id}. Sending timeout message.")
                     if self.message:
                         await self.message.edit(embed=timeout_message, view=None)
 
-                    # Audit-Log für Timeout hinzufügen
+                    # Audit-Log f├╝r Timeout hinzuf├╝gen
                     if self.auditlogChannel:
-                        return await self.auditlogChannel.send(embed=discord.Embed(title=f"⚠️ Match #{self.match_id} validation timed out. No winner could be determined. ⚠️",description=f"(The map {self.bs_map} could not be found)", color=discord.Color.yellow()))
+                        return await self.auditlogChannel.send(embed=discord.Embed(title=f"ÔÜá´©Å Match #{self.match_id} validation timed out. No winner could be determined. ÔÜá´©Å",description=f"(The map {self.bs_map} could not be found)", color=discord.Color.yellow()))
                     
 
                 # Erfolgreiche Validierung
                 embed_validated = discord.Embed(
-                    title=f"✅ Match #{self.match_id} Result Validated ✅",
+                    title=f"Ô£à Match #{self.match_id} Result Validated Ô£à",
                     description=f'Winners: <@{winning_team[0]["discord_id"]}> <@{winning_team[1]["discord_id"]}> <@{winning_team[2]["discord_id"]}>',
                     color=discord.Color.green()
                 )
         
-                self.logger.info(f"Match #{self.match_id} successfully validated. Winners determined.")
+                print(f"Match #{self.match_id} successfully validated. Winners determined.")
                 if self.message:
                     await self.message.edit(embed=embed_validated, view=None)
 
                 # ELO Updates string erstellen
                 eloupdateText = ""
                 for i, player in enumerate(self.team1 + self.team2):
-                    logger.debug(f"Elos jetzt {elos_before_evaluation[i]}, {player['elo']}")
+                    print(f"Elos jetzt {elos_before_evaluation[i]}, {player['elo']}")
                     elo_change = player["elo"] - elos_before_evaluation[i]
                     eloupdateText += f"<@{player['discord_id']}> {'+' if elo_change > 0 else ''}{elo_change} ({elos_before_evaluation[i]} -> {player['elo']})\n"
 
@@ -578,13 +576,13 @@ class ResultValidationView(discord.ui.View):
                 
 
             except Exception as e:
-                self.logger.error(f"An error occurred during timeout handling for Match #{self.match_id}: {str(e)}")
+                print(f"An error occurred during timeout handling for Match #{self.match_id}: {str(e)}")
                 if self.message:
                     await self.message.edit(embed=timeout_message, view=None)
 
-                # Audit-Log für Fehler
+                # Audit-Log f├╝r Fehler
                 if self.auditlogChannel:
-                    await self.auditlogChannel.send(embed=discord.Embed(title=f"❌ An error occurred during Match #{self.match_id} validation: {str(e)} ❌", description="", color=discord.Color.red()))
+                    await self.auditlogChannel.send(embed=discord.Embed(title=f"ÔØî An error occurred during Match #{self.match_id} validation: {str(e)} ÔØî", description="", color=discord.Color.red()))
 
         if self.thread and self.message:
             try:
@@ -593,3 +591,4 @@ class ResultValidationView(discord.ui.View):
                 await self.message.channel.delete()
             except:
                 pass
+

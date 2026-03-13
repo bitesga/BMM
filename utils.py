@@ -2,7 +2,6 @@ import discord
 from discord import app_commands
 import requests
 import json
-import logging
 import os
 import re
 import time
@@ -23,32 +22,6 @@ def loadEnv():
   return envData
   
 envData = loadEnv()
-
-
-"""
-Logging Setup
-"""
-logger = logging.getLogger(envData["LOGGER"])
-logger.setLevel(logging.DEBUG)  # Mindestlevel für alle Handler
-
-# Format für Logs
-formatter = logging.Formatter(
-    "%(asctime)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
-)
-
-# Stream-Handler (gibt Logs auf der Konsole aus)
-console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.DEBUG)  # Alle Logs (DEBUG, INFO, etc.) auf der Konsole
-console_handler.setFormatter(formatter)
-
-# Datei-Handler (schreibt Logs in Datei)
-file_handler = logging.FileHandler(f"{envData['LOGGER']}.log")
-file_handler.setLevel(logging.DEBUG)  # Alle Logs (DEBUG, INFO, etc.) auf der Konsole
-file_handler.setFormatter(formatter)
-
-# Handler dem Logger hinzufügen
-logger.addHandler(file_handler)
-logger.addHandler(console_handler)
 
 # Helper-Funktionen
 def simplify(name: str) -> str:
