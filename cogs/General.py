@@ -161,7 +161,7 @@ class General(commands.Cog):
         await category.delete()  
         
     await interaction.edit_original_response(content=f"✅ Successfully deleted all my matches and roles and leaving this server in 3 seconds.")
-    await asyncio.sleep(3)
+    await asyncio.sleep(10)
     await interaction.guild.leave()
     
   @uninstall.error
