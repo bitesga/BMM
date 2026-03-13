@@ -107,8 +107,8 @@ class MatchmakingView(discord.ui.View):
 
         try:
             await message.edit(embed=embed, view=self)
-        except Exception:
-            return
+        except Exception as e:
+            return print(f"An error occurred while updating mm embed in {self.matchmakingChannel.guild.name}: {str(e)}")   
         
 
     @discord.ui.button(label="Join", style=discord.ButtonStyle.green)
@@ -191,7 +191,8 @@ class MatchmakingView(discord.ui.View):
                             self.started = True
                             async with globalMatchmakingLog:
                                 return await self.start_matchmaking(self.matchesChannel, self.matchmakingChannel)
-        except Exception:
+        except Exception as e:
+            print(f"Join button error in {self.matchmakingChannel.guild.name}: {str(e)}")
             await safe_followup(interaction, content="⛔ Something went wrong while joining. Please try again.", ephemeral=True)
                 
             
@@ -230,6 +231,8 @@ class MatchmakingView(discord.ui.View):
         """
         Startet das Matchmaking, wenn die Lobby voll ist.
         """
+        print(f"Starting matchmaking in {matchesChannel.guild.name}...")
+
         mongodb.deleteGuildMM(matchesChannel.guild.id, self.region, self.enthusiasm.lower())
         guild_options = mongodb.findGuildOptions(matchesChannel.guild.id)
 
@@ -291,7 +294,9 @@ class MatchmakingView(discord.ui.View):
                     type=discord.ChannelType.private_thread,
                     auto_archive_duration=60
                 )
+                print(f"Thread created successfully: {matchesChannel.name} in guild {matchesChannel.guild.name}.")
             except Exception as e:
+                print(f"Failed to create thread in channel {matchesChannel.name}: {str(e)}")
                 freeUsers(ready_users)
                 return await matchmakingChannel.send("⛔ Failed to create thread channel")
             
@@ -300,7 +305,9 @@ class MatchmakingView(discord.ui.View):
                 try:
                     await asyncio.sleep(2)
                     await matchesChannel.add_user(user)
+                    print(f"Added user {user.display_name} ({user.id}) to thread {matchesChannel.name}.")
                 except Exception as e:
+                    print(f"Error adding user {user.id} ({user.display_name}) to thread {matchesChannel.name}: {str(e)}")
                     freeUsers(ready_users)
                     await matchesChannel.send(f"⛔ Error adding user {user.id} ({user.display_name}) to thread {matchesChannel.name}: {str(e)}")
         else:        
@@ -310,19 +317,23 @@ class MatchmakingView(discord.ui.View):
                 description=f"**🚀 Matchmaking Completed 🚀**\nYour lobby is in {matchesChannel.mention}\nStart a new one by using `/matchmaking`.",
                 color=discord.Color.green()
             )
+            print(f"Matchmaking lobby will be managed in {matchesChannel.name}.")
             
         # Nachricht aktualisieren oder senden
         try:
             if self.message:
                 await self.message.edit(embed=matchmaking_completed_message, view=None)
+                print(f"Updated existing matchmaking message in {matchesChannel.guild.name}.")
             else:
                 await delete_mm_embed(self.matchmakingChannel, self.enthusiasm)
                 await matchmakingChannel.send(embed=matchmaking_completed_message)
+                print(f"Sent new matchmaking completed message in {matchmakingChannel.guild.name}.")
         except discord.errors.NotFound:
+            print("Message to edit was not found; sending a new message.")
             await delete_mm_embed(self.matchmakingChannel, self.enthusiasm)
             await matchmakingChannel.send(embed=matchmaking_completed_message)
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"Error updating or sending matchmaking completion message: {str(e)}")
 
         # Ergebnisse posten
         try:
@@ -338,7 +349,8 @@ class MatchmakingView(discord.ui.View):
             
             await asyncio.sleep(2)
             msg = await matchesChannel.send(matchmaking_string, view=View(view_items))
-        except Exception:
+        except Exception as e:
+            print(f"An error occurred while sending matchmaking results in {matchesChannel.guild.name}: {str(e)}")
             freeUsers(ready_users)
             return await matchmakingChannel.send("⛔ An error occurred while posting the matchmaking results.")
 
@@ -358,6 +370,7 @@ class MatchmakingView(discord.ui.View):
             if guild_options["threads"]:
                 await message.pin()
         except Exception as e:
+            print(f"An error occurred while saving match or sending result validation message: {str(e)}")
             freeUsers(ready_users)
             return await matchmakingChannel.send(f"⛔ An error occurred while saving match or sending result validation message: {str(e)}")
 
@@ -370,6 +383,8 @@ class MatchmakingView(discord.ui.View):
 
         
         mongodb.deleteGuildMM(self.matchesChannel.guild.id, self.region, self.enthusiasm.lower())
+    
+        print(f"Matchmaking in {self.matchesChannel.guild.name} {self.region} timed out with mm status {self.started} and ready players {len(self.ready_users)}")
         
         timeout_message = discord.Embed(
             title=f"🏆 {self.lobby_name} Lobby 🏆",

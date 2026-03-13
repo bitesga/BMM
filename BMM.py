@@ -57,7 +57,7 @@ class BMM(commands.Bot):
                         guild_options[key] = role.id
                         roles[key] = role
                     except Exception as e:
-                      print(f"Failed to create role {key}: {str(e)}")
+                        print(f"Failed to create role {key}: {str(e)}")
 
         # Speichere die aktualisierten guild_options
         saveGuild(guild_options)
@@ -312,6 +312,7 @@ class BMM(commands.Bot):
   @tasks.loop(minutes=1)
   async def refresh_admins(self):
     print("starting admin refresh")
+      
     with open("admins.json", "r", encoding="UTF-8") as f:
         admins = json.load(f)
     self.admins = admins
@@ -322,6 +323,7 @@ class BMM(commands.Bot):
   @tasks.loop(minutes=1)
   async def refresh_blocked_admins(self):
     print("starting blocked admin refresh")
+      
     with open("blockedAdmins.json", "r", encoding="UTF-8") as f:
         blockedAdmins = json.load(f)
     self.blockedAdmins = blockedAdmins

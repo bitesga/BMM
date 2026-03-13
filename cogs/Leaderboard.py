@@ -290,8 +290,8 @@ class Leaderboard(commands.Cog):
             return True
         except discord.NotFound:
             return False
-        except Exception:
-            print("Unexpected leaderboard interaction error")
+        except Exception as e:
+            print(f"Unexpected leaderboard interaction error: {str(e)}")
             return False
 
     @guild_only

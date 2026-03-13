@@ -289,7 +289,7 @@ class BotAdmin(commands.Cog):
     elif isinstance(error, app_commands.CheckFailure):
         await interaction.response.send_message("❌ You do not have permission to use this command.", ephemeral=True)
     else:
-      print(f"Unhandled error in \"{function}\" command: {error}")
+        print(f"Unhandled error in \"{function}\" command: {error}")
         await interaction.response.send_message(f"❌ An unknown error occurred: {error}", ephemeral=True)
       
         

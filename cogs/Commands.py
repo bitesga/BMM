@@ -147,6 +147,7 @@ class Commands(commands.Cog):
             if mongodb.getGuildMM(interaction.guild.id, user_options["region"], enthusiasm.lower()):
                 return await interaction.edit_original_response(content=f"⛔ Another mm for {user_options['region']} {enthusiasm} is already running.")
 
+            # Log matchmaking start
             print(f"{interaction.user.name} starting {user_options['region']} {enthusiasm} mm in {interaction.guild.name}")
 
             # Get channels
@@ -183,8 +184,8 @@ class Commands(commands.Cog):
             await interaction.edit_original_response(content=f"Matchmaking started in {matchmakingChannel.mention}")
 
     except Exception as e:
-      print(f"Error in matchmaking command: {e}")
-      await interaction.edit_original_response(content=f"❌ An error occurred: {e}. Please try again later")
+        print(f"Error in matchmaking command: {e}")
+        await interaction.edit_original_response(content=f"❌ An error occurred: {e}. Please try again later")
 
   @matchmaking.error
   async def matchmaking_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
@@ -243,8 +244,10 @@ class Commands(commands.Cog):
           if existing_mm:
               return await interaction.followup.send(content="⛔ Matchmaking for this private room is already running.", ephemeral=True)
 
+          # Announce matchmaking start
           title = f"🏆 {private_room['name'].title()} Lobby 🏆"
           print(f"{interaction.user.name} started private matchmaking for room '{private_room['name']}' with key '{private_key}'.")
+
       
           # Get the matchmaking channel
           _, matchmakingChannels, matchesChannel, _, auditlogChannel = await self.bot.getChannels(interaction.guild)
@@ -371,7 +374,7 @@ class Commands(commands.Cog):
       print(f"Elos before Evaluation of Match #{match_id} on Map {match['bs_map']} in {interaction.guild.name}:\n\t{elos_before_evaluation}")
       match_date = match["match_date"]
           
-      winning_team, _, not_founds = evaluate_winner(battle_log, match["team1"], match["team2"], match["bs_map"], match_id, match_date, interaction.guild_id, match["private"])
+      winning_team, _, not_founds = evaluate_winner(battle_log, match["team1"], match["team2"], match["bs_map"], self.bot, match_id, match_date, interaction.guild_id, match["private"])
 
       if not winning_team:
           if not_founds:
