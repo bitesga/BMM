@@ -85,7 +85,7 @@ def dynamic_guild_cooldown(seconds: int = 15, bot_owner_id: int = 32460758384141
     cooldown_duration = seconds
     if use_matchmaking_setting and interaction.guild:
       import mongodb
-      guild_options = mongodb.findGuildOptions(interaction.guild.id)
+      guild_options = await asyncio.to_thread(mongodb.findGuildOptions, interaction.guild.id)
       if guild_options:
         cooldown_duration = guild_options.get("cooldown_mm", 120)
 

@@ -32,6 +32,10 @@ async def safe_followup(interaction: discord.Interaction, content: str, ephemera
         return True
     except Exception:
         return False
+
+
+async def run_blocking(func, *args):
+    return await asyncio.to_thread(func, *args)
   
  
 def get_mm_channel_for_region(channels, region):
@@ -122,8 +126,8 @@ class MatchmakingView(discord.ui.View):
                 if len(self.ready_users) >= 6:
                     return await safe_followup(interaction, content="⛔ The lobby is already full!", ephemeral=True)
 
-                user_options = mongodb.findUserOptions(interaction.user.id, interaction.guild.id)
-                guild_options = mongodb.findGuildOptions(interaction.guild.id)
+                user_options = await run_blocking(mongodb.findUserOptions, interaction.user.id, interaction.guild.id)
+                guild_options = await run_blocking(mongodb.findGuildOptions, interaction.guild.id)
                 
                 if "timeout" in user_options:
                     if pytz.timezone(guild_options["tz"]).localize(user_options["timeout"]) > datetime.datetime.now(pytz.timezone(guild_options["tz"])):
@@ -142,7 +146,7 @@ class MatchmakingView(discord.ui.View):
             
             
                 if self.private_key:
-                    private_room = mongodb.findPrivate(self.private_key, str(interaction.guild.id))
+                    private_room = await run_blocking(mongodb.findPrivate, self.private_key, str(interaction.guild.id))
                     if not private_room or "members" not in private_room or interaction.user.id not in private_room["members"]:
                         return await safe_followup(interaction, content="⛔ You need to join this private room using `/private_join` and the private key to join this lobby.", ephemeral=True)
                 else:
@@ -215,7 +219,7 @@ class MatchmakingView(discord.ui.View):
                 description=f"**😞 Host left the Matchmaking 😞**\nStart a new matchmaking by using `/matchmaking`.",
                 color=discord.Color.red()
             )
-            mongodb.deleteGuildMM(self.matchesChannel.guild.id, self.region, self.enthusiasm.lower())
+            await run_blocking(mongodb.deleteGuildMM, self.matchesChannel.guild.id, self.region, self.enthusiasm.lower())
             
             if self.message:
                 await self.message.edit(embed=host_left_message, view=None) 
@@ -233,27 +237,27 @@ class MatchmakingView(discord.ui.View):
         """
         print(f"Starting matchmaking in {matchesChannel.guild.name}...")
 
-        mongodb.deleteGuildMM(matchesChannel.guild.id, self.region, self.enthusiasm.lower())
-        guild_options = mongodb.findGuildOptions(matchesChannel.guild.id)
+        await run_blocking(mongodb.deleteGuildMM, matchesChannel.guild.id, self.region, self.enthusiasm.lower())
+        guild_options = await run_blocking(mongodb.findGuildOptions, matchesChannel.guild.id)
 
         for item in self.children:
             item.disabled = True
 
         ready_users = list(self.ready_users)
         
-        def freeUsers(ready_users):
+        async def freeUsers(ready_users):
             for user in ready_users:
-                user_info = mongodb.findUserOptions(user.id, matchesChannel.guild.id)
+                user_info = await run_blocking(mongodb.findUserOptions, user.id, matchesChannel.guild.id)
                 user_info["in_match"] = False
-                mongodb.saveUser(user_info)
+                await run_blocking(mongodb.saveUser, user_info)
 
         players = []
         for user in ready_users:
-            user_info = mongodb.findUserOptions(user.id, matchesChannel.guild.id)
+            user_info = await run_blocking(mongodb.findUserOptions, user.id, matchesChannel.guild.id)
             if guild_options["seperate_mm_roles"]:
                 user_info["role"] = str(self.lobby_role.id)
             user_info["in_match"] = datetime.datetime.now() + datetime.timedelta(minutes=10)
-            mongodb.saveUser(user_info)
+            await run_blocking(mongodb.saveUser, user_info)
             players.append(user_info)
 
         # Create Random Teams
@@ -297,7 +301,7 @@ class MatchmakingView(discord.ui.View):
                 print(f"Thread created successfully: {matchesChannel.name} in guild {matchesChannel.guild.name}.")
             except Exception as e:
                 print(f"Failed to create thread in channel {matchesChannel.name}: {str(e)}")
-                freeUsers(ready_users)
+                await freeUsers(ready_users)
                 return await matchmakingChannel.send("⛔ Failed to create thread channel")
             
             # Spieler zum Thread hinzufügen
@@ -308,7 +312,7 @@ class MatchmakingView(discord.ui.View):
                     print(f"Added user {user.display_name} ({user.id}) to thread {matchesChannel.name}.")
                 except Exception as e:
                     print(f"Error adding user {user.id} ({user.display_name}) to thread {matchesChannel.name}: {str(e)}")
-                    freeUsers(ready_users)
+                    await freeUsers(ready_users)
                     await matchesChannel.send(f"⛔ Error adding user {user.id} ({user.display_name}) to thread {matchesChannel.name}: {str(e)}")
         else:        
             # Embed für Matchmaking-Abschluss ohne Thread
@@ -351,13 +355,13 @@ class MatchmakingView(discord.ui.View):
             msg = await matchesChannel.send(matchmaking_string, view=View(view_items))
         except Exception as e:
             print(f"An error occurred while sending matchmaking results in {matchesChannel.guild.name}: {str(e)}")
-            freeUsers(ready_users)
+            await freeUsers(ready_users)
             return await matchmakingChannel.send("⛔ An error occurred while posting the matchmaking results.")
 
         # Match speichern und Validierungsnachricht senden
         try:
             match_date = datetime.datetime.now(datetime.timezone.utc)
-            mongodb.saveMatch({"match_id": str(msg.id), "team1": team1, "team2": team2, "bs_map": selected_map, "match_date": match_date, "validated": False, "private": self.private_key})
+            await run_blocking(mongodb.saveMatch, {"match_id": str(msg.id), "team1": team1, "team2": team2, "bs_map": selected_map, "match_date": match_date, "validated": False, "private": self.private_key})
             message = await matchesChannel.send(
                 embed=discord.Embed(
                     title=f"🏆 Match #{msg.id} Result Validation 🏆",
@@ -371,7 +375,7 @@ class MatchmakingView(discord.ui.View):
                 await message.pin()
         except Exception as e:
             print(f"An error occurred while saving match or sending result validation message: {str(e)}")
-            freeUsers(ready_users)
+            await freeUsers(ready_users)
             return await matchmakingChannel.send(f"⛔ An error occurred while saving match or sending result validation message: {str(e)}")
 
         
@@ -382,7 +386,7 @@ class MatchmakingView(discord.ui.View):
         """
 
         
-        mongodb.deleteGuildMM(self.matchesChannel.guild.id, self.region, self.enthusiasm.lower())
+        await run_blocking(mongodb.deleteGuildMM, self.matchesChannel.guild.id, self.region, self.enthusiasm.lower())
     
         print(f"Matchmaking in {self.matchesChannel.guild.name} {self.region} timed out with mm status {self.started} and ready players {len(self.ready_users)}")
         

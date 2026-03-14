@@ -22,6 +22,10 @@ class Commands(commands.Cog):
     self.mm_lock = asyncio.Lock()
 
 
+  async def _run_blocking(self, func, *args):
+    return await asyncio.to_thread(func, *args)
+
+
   async def _safe_interaction_reply(self, interaction: discord.Interaction, content: str, ephemeral: bool = True):
     try:
       if interaction.response.is_done():
@@ -82,8 +86,8 @@ class Commands(commands.Cog):
                 return await interaction.edit_original_response(content="⛔ Invalid Team Code!")
 
             # Fetch user and guild options
-            user_options = mongodb.findUserOptions(interaction.user.id, interaction.guild.id)
-            guild_options = mongodb.findGuildOptions(interaction.guild.id)
+            user_options = await self._run_blocking(mongodb.findUserOptions, interaction.user.id, interaction.guild.id)
+            guild_options = await self._run_blocking(mongodb.findGuildOptions, interaction.guild.id)
 
             # Validate team code length
             if len(team_code) > 10 or len(team_code) < 3:
@@ -126,7 +130,7 @@ class Commands(commands.Cog):
                         )
 
             # Check for maintenance lock
-            lock = mongodb.getLock()
+            lock = await self._run_blocking(mongodb.getLock)
             if lock and "reason" in lock:
                 return await interaction.edit_original_response(content=f"⛔ Matchmaking is locked for maintenance right now.\nReason: `{lock['reason']}`")
 
@@ -144,7 +148,7 @@ class Commands(commands.Cog):
             if guild_options["seperate_mm_roles"]:
                 enthusiasm = player_role.name.title()
 
-            if mongodb.getGuildMM(interaction.guild.id, user_options["region"], enthusiasm.lower()):
+            if await self._run_blocking(mongodb.getGuildMM, interaction.guild.id, user_options["region"], enthusiasm.lower()):
                 return await interaction.edit_original_response(content=f"⛔ Another mm for {user_options['region']} {enthusiasm} is already running.")
 
             # Log matchmaking start
@@ -161,7 +165,7 @@ class Commands(commands.Cog):
                 return await interaction.edit_original_response(content="⛔ #matches-running channel does not exist in this server.")
 
             # Start matchmaking
-            mongodb.setGuildMM(interaction.guild.id, user_options["region"], enthusiasm.lower())
+            await self._run_blocking(mongodb.setGuildMM, interaction.guild.id, user_options["region"], enthusiasm.lower())
             await interaction.edit_original_response(content="🚀 Starting mm...")
 
             # Create and send matchmaking embed
@@ -196,85 +200,90 @@ class Commands(commands.Cog):
   @app_commands.command(description="Starts private matchmaking with a private key.")
   @dynamic_guild_cooldown(seconds=15)
   async def private_mm(self, interaction: discord.Interaction, team_code: str, private_key: str):
-      await interaction.response.defer(ephemeral=True)
+    await interaction.response.defer(ephemeral=True)
 
-      async with self.mm_lock:
-          # Validate the private key
-          private_room = mongodb.findPrivate(private_key, str(interaction.guild.id))
-          if not private_room:
-              return await interaction.followup.send(content="⛔ Invalid private key. No such private room exists.", ephemeral=True)
+    async with self.mm_lock:
+      private_room = await self._run_blocking(mongodb.findPrivate, private_key, str(interaction.guild.id))
+      if not private_room:
+        return await interaction.followup.send(content="⛔ Invalid private key. No such private room exists.", ephemeral=True)
 
-          # Time-based matchmaking restrictions
-          now = datetime.datetime.now(pytz.timezone("Europe/Berlin"))
-          if now.replace(hour=5, minute=30, second=0, microsecond=0) <= now < now.replace(hour=6, minute=0, second=0, microsecond=0):
-              return await interaction.edit_original_response(content=f"⛔ Matchmaking is closed. Bot is restarting in {60 - now.minute} Minutes!")
-          
-          if now.replace(hour=6, minute=0, second=0, microsecond=0) <= now < now.replace(hour=6, minute=5, second=0, microsecond=0):
-              return await interaction.edit_original_response(content=f"⛔ Bot just restarted. Matchmaking will open in {5 - now.minute} Minutes!")
+      now = datetime.datetime.now(pytz.timezone("Europe/Berlin"))
+      if now.replace(hour=5, minute=30, second=0, microsecond=0) <= now < now.replace(hour=6, minute=0, second=0, microsecond=0):
+        return await interaction.edit_original_response(content=f"⛔ Matchmaking is closed. Bot is restarting in {60 - now.minute} Minutes!")
 
-          if not validators.url(f"https://link.brawlstars.com/invite/gameroom/en?tag={team_code.upper()}"):
-            return await interaction.edit_original_response(content=f"⛔ Invalid Team Code!")
+      if now.replace(hour=6, minute=0, second=0, microsecond=0) <= now < now.replace(hour=6, minute=5, second=0, microsecond=0):
+        return await interaction.edit_original_response(content=f"⛔ Bot just restarted. Matchmaking will open in {5 - now.minute} Minutes!")
 
-          
-          # Nutzer Id fetchen
-          user_options = mongodb.findUserOptions(interaction.user.id, interaction.guild.id)
-          guild_options = mongodb.findGuildOptions(interaction.guild.id)
-      
-          if not user_options["bs_id"]:
-            return await interaction.edit_original_response(content="🖊️ Make sure to `/save_id` before using this command!")
-          
-          if user_options["in_match"] and user_options.get("in_match") > datetime.datetime.now():
-            return await interaction.edit_original_response(content="⛔ Finish and evaluate your running match before starting a new one!")
-      
-          if "timeout" in user_options:
-              if pytz.timezone(guild_options["tz"]).localize(user_options["timeout"]) > datetime.datetime.now(pytz.timezone(guild_options["tz"])):
-                  return await interaction.edit_original_response(content=f"⛔ You have been timed out. You can resume playing at: {user_options['timeout'].strftime('%d.%m.%Y, %H:%M')}.")
-          
-          if "roles_timeout" in guild_options:
-            for role in interaction.user.roles:
-              if role.id in guild_options["roles_timeout"]:
-                  return await interaction.edit_original_response(content=f"⛔ Your role {role.mention} has been timed out. This role can resume playing at: {user_options['timeout'].strftime('%d.%m.%Y, %H:%M')}.")
-                
-          lock = mongodb.getLock()
-          if lock and "reason" in lock:
-            return await interaction.edit_original_response(content=f"⛔ Matchmaking is locked for maintenance right now.\nReason: `{lock['reason']}`")
-          
-          # Ensure no existing matchmaking for this private room
-          existing_mm = mongodb.getGuildMM(interaction.guild.id, private_room["private_key"], "private")
-          if existing_mm:
-              return await interaction.followup.send(content="⛔ Matchmaking for this private room is already running.", ephemeral=True)
+      if not validators.url(f"https://link.brawlstars.com/invite/gameroom/en?tag={team_code.upper()}"):
+        return await interaction.edit_original_response(content=f"⛔ Invalid Team Code!")
 
-          # Announce matchmaking start
-          title = f"🏆 {private_room['name'].title()} Lobby 🏆"
-          print(f"{interaction.user.name} started private matchmaking for room '{private_room['name']}' with key '{private_key}'.")
+      user_options = await self._run_blocking(mongodb.findUserOptions, interaction.user.id, interaction.guild.id)
+      guild_options = await self._run_blocking(mongodb.findGuildOptions, interaction.guild.id)
 
-      
-          # Get the matchmaking channel
-          _, matchmakingChannels, matchesChannel, _, auditlogChannel = await self.bot.getChannels(interaction.guild)
-          matchmakingChannel = get_mm_channel_for_region(matchmakingChannels, user_options["region"])
-          
-          if not matchmakingChannel:
-                  return await interaction.edit_original_response(content=f"⛔ {user_options['region']} mm channel does not exist in this server.")
+      if not user_options["bs_id"]:
+        return await interaction.edit_original_response(content="🖊️ Make sure to `/save_id` before using this command!")
 
-          if not matchesChannel:
-              return await interaction.edit_original_response(content="⛔ #matches-running channel does not exist in this server.")
+      if user_options["in_match"] and user_options.get("in_match") > datetime.datetime.now():
+        return await interaction.edit_original_response(content="⛔ Finish and evaluate your running match before starting a new one!")
 
-          # Save matchmaking details to the database
-          mongodb.setGuildMM(interaction.guild.id, user_options["region"], private_key)
+      if "timeout" in user_options:
+        if pytz.timezone(guild_options["tz"]).localize(user_options["timeout"]) > datetime.datetime.now(pytz.timezone(guild_options["tz"])):
+          return await interaction.edit_original_response(content=f"⛔ You have been timed out. You can resume playing at: {user_options['timeout'].strftime('%d.%m.%Y, %H:%M')}.")
 
-          embed = discord.Embed(
-              title=title,
-              description=f"⚔️ **Players Ready:** 1/6\nThis is a private Lobby. Use `/private_join` to register using the private key.",
-              color=discord.Color.blurple()
-          )
-          anonymous_queues = guild_options["anonymous_queues"]
-          if not anonymous_queues:
-            embed.add_field(name="Players waiting", value=interaction.user.mention)
+      if "roles_timeout" in guild_options:
+        for role in interaction.user.roles:
+          if role.id in guild_options["roles_timeout"]:
+            return await interaction.edit_original_response(content=f"⛔ Your role {role.mention} has been timed out. This role can resume playing at: {user_options['timeout'].strftime('%d.%m.%Y, %H:%M')}.")
 
+      lock = await self._run_blocking(mongodb.getLock)
+      if lock and "reason" in lock:
+        return await interaction.edit_original_response(content=f"⛔ Matchmaking is locked for maintenance right now.\nReason: `{lock['reason']}`")
 
-          await matchmakingChannel.send(embed=embed, view=MatchmakingView(self.bot, team_code, matchesChannel, matchmakingChannel, auditlogChannel, interaction.user,
-                                        user_options["region"], private_room["name"], None, anonymous_queues, user_options["elo"], private_key))
-          await interaction.edit_original_response(content=f"✅ Private matchmaking started in {matchmakingChannel.mention}.")
+      existing_mm = await self._run_blocking(mongodb.getGuildMM, interaction.guild.id, private_room["private_key"], "private")
+      if existing_mm:
+        return await interaction.followup.send(content="⛔ Matchmaking for this private room is already running.", ephemeral=True)
+
+      title = f"🏆 {private_room['name'].title()} Lobby 🏆"
+      print(f"{interaction.user.name} started private matchmaking for room '{private_room['name']}' with key '{private_key}'.")
+
+      _, matchmakingChannels, matchesChannel, _, auditlogChannel = await self.bot.getChannels(interaction.guild)
+      matchmakingChannel = get_mm_channel_for_region(matchmakingChannels, user_options["region"])
+
+      if not matchmakingChannel:
+        return await interaction.edit_original_response(content=f"⛔ {user_options['region']} mm channel does not exist in this server.")
+
+      if not matchesChannel:
+        return await interaction.edit_original_response(content="⛔ #matches-running channel does not exist in this server.")
+
+      await self._run_blocking(mongodb.setGuildMM, interaction.guild.id, user_options["region"], private_key)
+
+      embed = discord.Embed(
+        title=title,
+        description=f"⚔️ **Players Ready:** 1/6\nThis is a private Lobby. Use `/private_join` to register using the private key.",
+        color=discord.Color.blurple()
+      )
+      anonymous_queues = guild_options["anonymous_queues"]
+      if not anonymous_queues:
+        embed.add_field(name="Players waiting", value=interaction.user.mention)
+
+      await matchmakingChannel.send(
+        embed=embed,
+        view=MatchmakingView(
+          self.bot,
+          team_code,
+          matchesChannel,
+          matchmakingChannel,
+          auditlogChannel,
+          interaction.user,
+          user_options["region"],
+          private_room["name"],
+          None,
+          anonymous_queues,
+          user_options["elo"],
+          private_key,
+        )
+      )
+      await interaction.edit_original_response(content=f"✅ Private matchmaking started in {matchmakingChannel.mention}.")
 
   @private_mm.error
   async def private_mm_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
@@ -291,8 +300,8 @@ class Commands(commands.Cog):
       
     await interaction.response.defer()
     
-    async with self.bot.validation_lock:    
-      match = mongodb.findMatch(match_id)
+    async with self.bot.validation_lock:
+      match = await self._run_blocking(mongodb.findMatch, match_id)
       if not match:
           return await interaction.edit_original_response(content="Match Id was not found.")
         
@@ -307,12 +316,12 @@ class Commands(commands.Cog):
         winning_team, losing_team = match["team2"], match["team1"]
 
       print(f"Match {match_id}: Winning Team: {winning_team}, Losing Team: {losing_team}")
-      match["team1"], match["team2"] = refreshElos(match["team1"], match["team2"], interaction.guild.id)
+      match["team1"], match["team2"] = await self._run_blocking(refreshElos, match["team1"], match["team2"], interaction.guild.id)
       elos_before_evaluation = [player["elo"] for player in match["team1"] + match["team2"]]
       print(f"Elos before Evaluation of Match #{match_id} on Map {match['bs_map']} in {interaction.guild.name}:\n\t{elos_before_evaluation}")
 
       
-      guild_options = mongodb.findGuildOptions(interaction.guild.id)
+      guild_options = await self._run_blocking(mongodb.findGuildOptions, interaction.guild.id)
       bonusfactor = 2 if datetime.datetime.now(pytz.timezone(guild_options["tz"])).weekday() in [5, 6] and guild_options["doublePointsWeekend"] else 1
       bonusfactorNegativeEloPlayers = 2 if datetime.datetime.now(pytz.timezone(guild_options["tz"])).weekday() in [5, 6] and guild_options["doublePointsWeekendNegativeElo"] else 1
       
@@ -324,7 +333,7 @@ class Commands(commands.Cog):
 
       match["validated"] = True
       match["winner"] = winning_team
-      mongodb.saveMatch(match)
+      await self._run_blocking(mongodb.saveMatch, match)
       
       # ELO Updates string erstellen
       eloupdateText = ""
@@ -351,60 +360,64 @@ class Commands(commands.Cog):
   @dynamic_guild_cooldown(seconds=15)
   async def validate_result(self, interaction: discord.Interaction, match_id: str):
     await interaction.response.defer()
-    
-    async with self.bot.validation_lock:    
-      match = mongodb.findMatch(match_id)
-      if not match:
-          return await interaction.edit_original_response(content="Match Id was not found.")
-        
-      if match["validated"]:
-          return await interaction.edit_original_response(content="Match has already been evaluated.")
-        
-      if not interaction.user.id in [player["discord_id"] for player in match["team1"] + match["team2"]] and not ((str(interaction.user.id) in self.bot.admins or interaction.user.guild_permissions.administrator) and not str(interaction.user.id) in self.bot.blockedAdmins):
-          return await interaction.edit_original_response(content="You are not part of this match.")
 
-      # Ergebnisprüfung
+    async with self.bot.validation_lock:
+      match = await self._run_blocking(mongodb.findMatch, match_id)
+      if not match:
+        return await interaction.edit_original_response(content="Match Id was not found.")
+
+      if match["validated"]:
+        return await interaction.edit_original_response(content="Match has already been evaluated.")
+
+      if not interaction.user.id in [player["discord_id"] for player in match["team1"] + match["team2"]] and not ((str(interaction.user.id) in self.bot.admins or interaction.user.guild_permissions.administrator) and not str(interaction.user.id) in self.bot.blockedAdmins):
+        return await interaction.edit_original_response(content="You are not part of this match.")
+
       battle_log = await fetchBattleLog(match["team1"][0]["bs_id"])
       if not battle_log:
-          print(f"Fetching battle log for Team 1 Player BS ID failed {match['team1'][0]['bs_id']}.")
-          return await interaction.edit_original_response(content=f"Could not fetch the battle log for <@{match['team1'][0]['discord_id']}> with BS ID: `{match['team1'][0]['bs_id']}`.")
+        print(f"Fetching battle log for Team 1 Player BS ID failed {match['team1'][0]['bs_id']}.")
+        return await interaction.edit_original_response(content=f"Could not fetch the battle log for <@{match['team1'][0]['discord_id']}> with BS ID: `{match['team1'][0]['bs_id']}`.")
 
-      match["team1"], match["team2"] = refreshElos(match["team1"], match["team2"], interaction.guild.id)
+      match["team1"], match["team2"] = await self._run_blocking(refreshElos, match["team1"], match["team2"], interaction.guild.id)
       elos_before_evaluation = [player["elo"] for player in match["team1"] + match["team2"]]
       print(f"Elos before Evaluation of Match #{match_id} on Map {match['bs_map']} in {interaction.guild.name}:\n\t{elos_before_evaluation}")
       match_date = match["match_date"]
-          
-      winning_team, _, not_founds = evaluate_winner(battle_log, match["team1"], match["team2"], match["bs_map"], self.bot, match_id, match_date, interaction.guild_id, match["private"])
+
+      winning_team, _, not_founds = await self._run_blocking(
+        evaluate_winner,
+        battle_log,
+        match["team1"],
+        match["team2"],
+        match["bs_map"],
+        match_id,
+        match_date,
+        interaction.guild_id,
+        match["private"],
+      )
 
       if not winning_team:
-          if not_founds:
-              not_founds_text = ""
-              for user in not_founds:
-                  not_founds_text += f"\n<@{user['discord_id']}> with BS ID: #{user['bs_id']}"
-              print(f"Map `{match['bs_map']}` found but the following players where not found.\n{not_founds_text}")
-              return await interaction.edit_original_response(content=f"Map `{match['bs_map']}` found but the following players where not found.\n{not_founds_text}\n\nPlease save your correct id: `/save_id`")
-          return await interaction.edit_original_response(content=f"Match with the registered players and map `{match['bs_map']}` was not found in the battle log.")
-        
-          
-      # ELO Updates string erstellen
-      eloupdateText = ""
-      # Refresh the team elos before using them for audit log
-      for i, player in enumerate(match["team1"] + match["team2"]):
-          print(f"Elo change für {player['bs_id']}: {elos_before_evaluation[i]}, {player['elo']}. #{match_id} - {match['bs_map']} - {interaction.guild.name}")
-          elo_change = player["elo"] - elos_before_evaluation[i]
-          eloupdateText += f"<@{player['discord_id']}> {'+' if elo_change > 0 else ''}{elo_change} ({elos_before_evaluation[i]} -> {player['elo']})\n"
+        if not_founds:
+          not_founds_text = ""
+          for user in not_founds:
+            not_founds_text += f"\n<@{user['discord_id']}> with BS ID: #{user['bs_id']}"
+          print(f"Map `{match['bs_map']}` found but the following players where not found.\n{not_founds_text}")
+          return await interaction.edit_original_response(content=f"Map `{match['bs_map']}` found but the following players where not found.\n{not_founds_text}\n\nPlease save your correct id: `/save_id`")
+        return await interaction.edit_original_response(content=f"Match with the registered players and map `{match['bs_map']}` was not found in the battle log.")
 
-      
+      eloupdateText = ""
+      for i, player in enumerate(match["team1"] + match["team2"]):
+        print(f"Elo change für {player['bs_id']}: {elos_before_evaluation[i]}, {player['elo']}. #{match_id} - {match['bs_map']} - {interaction.guild.name}")
+        elo_change = player["elo"] - elos_before_evaluation[i]
+        eloupdateText += f"<@{player['discord_id']}> {'+' if elo_change > 0 else ''}{elo_change} ({elos_before_evaluation[i]} -> {player['elo']})\n"
+
       _, _, _, _, auditlogChannel = await self.bot.getChannels(interaction.guild)
-      
       if auditlogChannel:
-          await auditlogChannel.send(embed=discord.Embed(title=f"Match #{match_id} on map {match['bs_map']} was validated on Command /validate_result and here are the elo updates:", description=eloupdateText, color=discord.Color.green()))
-            
+        await auditlogChannel.send(embed=discord.Embed(title=f"Match #{match_id} on map {match['bs_map']} was validated on Command /validate_result and here are the elo updates:", description=eloupdateText, color=discord.Color.green()))
+
       match["validated"] = True
       match["winner"] = winning_team
-      mongodb.saveMatch(match)
+      await self._run_blocking(mongodb.saveMatch, match)
       await interaction.edit_original_response(content="✅ Match validated", view=None)
-      
+        
 
   @validate_result.error
   async def validate_result_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
@@ -415,23 +428,21 @@ class Commands(commands.Cog):
   @app_commands.command(description="Join a private room using the given private key.")
   @dynamic_guild_cooldown(seconds=15)
   async def private_join(self, interaction: discord.Interaction, private_key: str):
-      await interaction.response.defer(ephemeral=True)
+    await interaction.response.defer(ephemeral=True)
 
-      private_room = mongodb.findPrivate(private_key, str(interaction.guild.id))
-      if not private_room:
-          return await interaction.followup.send(content="⛔ No private room found with the provided key.", ephemeral=True)
+    private_room = await self._run_blocking(mongodb.findPrivate, private_key, str(interaction.guild.id))
+    if not private_room:
+      return await interaction.followup.send(content="⛔ No private room found with the provided key.", ephemeral=True)
 
-      if "members" not in private_room:
-          private_room["members"] = []
-      if interaction.user.id not in private_room["members"]:
-          private_room["members"].append(interaction.user.id)
-          if not mongodb.savePrivate(private_room):  # Save updated room data
-              return await interaction.followup.send(content="❌ Failed to join the private room. Please try again.", ephemeral=True)
-          else:
-            await interaction.followup.send(content=f"✅ You have successfully joined the private room: `{private_room['name']}`.", ephemeral=True)
-               
-      # Send a success message to the user
-      await interaction.followup.send(content=f"✅ You are already in this private room: `{private_room['name']}`.", ephemeral=True)
+    if "members" not in private_room:
+      private_room["members"] = []
+    if interaction.user.id not in private_room["members"]:
+      private_room["members"].append(interaction.user.id)
+      if not await self._run_blocking(mongodb.savePrivate, private_room):
+        return await interaction.followup.send(content="❌ Failed to join the private room. Please try again.", ephemeral=True)
+      return await interaction.followup.send(content=f"✅ You have successfully joined the private room: `{private_room['name']}`.", ephemeral=True)
+
+    await interaction.followup.send(content=f"✅ You are already in this private room: `{private_room['name']}`.", ephemeral=True)
 
   @private_join.error
   async def private_join_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
@@ -443,8 +454,8 @@ class Commands(commands.Cog):
   @dynamic_guild_cooldown(seconds=15)
   async def save_id(self, interaction: discord.Interaction, bs_id: str, region: Literal["EMEA", "NA", "SA", "APAC"], ping: Literal["ping 🔔", "no ping 🔕"]):
     await interaction.response.defer(ephemeral=True)
-    user_options = mongodb.findUserOptions(interaction.user.id, interaction.guild.id)
-    guild_options = mongodb.findGuildOptions(interaction.guild.id)
+    user_options = await self._run_blocking(mongodb.findUserOptions, interaction.user.id, interaction.guild.id)
+    guild_options = await self._run_blocking(mongodb.findGuildOptions, interaction.guild.id)
  
     player, bs_id, wartung = getPlayerForBsId(bs_id)
     if wartung:
@@ -462,7 +473,7 @@ class Commands(commands.Cog):
       user_options["bs_id"] = bs_id 
       user_options["guild_id"] = interaction.guild_id      
       user_options["region"] = region 
-      mongodb.saveUser(user_options)
+      await self._run_blocking(mongodb.saveUser, user_options)
       is_pinged = True if "ping 🔔" == ping else False
       roles = await self.bot.getRoles(interaction.guild, True)
       role = get_role_for_ping_and_region(roles, region, is_pinged)
@@ -492,8 +503,8 @@ class Commands(commands.Cog):
         return await interaction.response.send_message(content=f"⛔ You are not allowed to use this command.")
       
     await interaction.response.defer(ephemeral=True)
-    user_options = mongodb.findUserOptions(user.id, interaction.guild.id)
-    guild_options = mongodb.findGuildOptions(interaction.guild.id)
+    user_options = await self._run_blocking(mongodb.findUserOptions, user.id, interaction.guild.id)
+    guild_options = await self._run_blocking(mongodb.findGuildOptions, interaction.guild.id)
     
     player, bs_id, wartung = getPlayerForBsId(bs_id)
     if wartung:
@@ -512,7 +523,7 @@ class Commands(commands.Cog):
       user_options["bs_id"] = bs_id 
       user_options["guild_id"] = interaction.guild_id
       user_options["region"] = region        
-      mongodb.saveUser(user_options)
+      await self._run_blocking(mongodb.saveUser, user_options)
       is_pinged = True if "ping 🔔" == ping else False
       roles = await self.bot.getRoles(interaction.guild, True)
       role = get_role_for_ping_and_region(roles, region, is_pinged)
