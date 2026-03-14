@@ -56,6 +56,18 @@ class BotAdmin(commands.Cog):
   
   def __init__(self, bot):
     self.bot = bot
+
+  async def _load_json(self, path: str):
+    def _read():
+      with open(path, "r", encoding="UTF-8") as f:
+        return json.load(f)
+    return await asyncio.to_thread(_read)
+
+  async def _save_json(self, path: str, data: dict):
+    def _write():
+      with open(path, "w", encoding="UTF-8") as f:
+        json.dump(data, f, indent=2)
+    await asyncio.to_thread(_write)
       
      
   @guild_only
@@ -106,15 +118,13 @@ class BotAdmin(commands.Cog):
 
     await interaction.response.defer()
 
-    with open("blockedAdmins.json", "r", encoding="UTF-8") as f:
-        blockedAdmins = json.load(f)
+    blockedAdmins = await self._load_json("blockedAdmins.json")
 
     if str(user.id) in blockedAdmins:
         return await interaction.followup.send(content=f"⛔ {user.mention} is already blocked!", file=discord.File("blockedAdmins.json"))
 
     blockedAdmins[str(user.id)] = user.display_name
-    with open("blockedAdmins.json", "w", encoding="UTF-8") as f:
-        json.dump(blockedAdmins, f, indent=2)
+    await self._save_json("blockedAdmins.json", blockedAdmins)
 
     await interaction.followup.send(content=f"✅ {user.mention} added to admin block list!", file=discord.File("blockedAdmins.json"))
 
@@ -134,15 +144,13 @@ class BotAdmin(commands.Cog):
 
     await interaction.response.defer()
 
-    with open("blockedAdmins.json", "r", encoding="UTF-8") as f:
-        blockedAdmins = json.load(f)
+    blockedAdmins = await self._load_json("blockedAdmins.json")
 
     if not str(user.id) in blockedAdmins:
         return await interaction.followup.send(content=f"⛔ {user.mention} is not a blocked admin!", file=discord.File("blockedAdmins.json"))
 
     del blockedAdmins[str(user.id)]
-    with open("blockedAdmins.json", "w", encoding="UTF-8") as f:
-        json.dump(blockedAdmins, f, indent=2)
+    await self._save_json("blockedAdmins.json", blockedAdmins)
 
     await interaction.followup.send(content=f"✅ {user.mention} removed from admin block list!", file=discord.File("blockedAdmins.json"))
 
@@ -162,15 +170,13 @@ class BotAdmin(commands.Cog):
 
     await interaction.response.defer()
 
-    with open("admins.json", "r", encoding="UTF-8") as f:
-        admins = json.load(f)
+    admins = await self._load_json("admins.json")
 
     if str(user.id) in admins:
         return await interaction.followup.send(content=f"⛔ {user.mention} is already admin!")
 
     admins[str(user.id)] = user.display_name
-    with open("admins.json", "w", encoding="UTF-8") as f:
-        json.dump(admins, f, indent=2)
+    await self._save_json("admins.json", admins)
 
     await interaction.followup.send(content=f"✅ {user.mention} added to admin list!", file=discord.File("admins.json"))
 
@@ -190,15 +196,13 @@ class BotAdmin(commands.Cog):
 
     await interaction.response.defer()
 
-    with open("admins.json", "r", encoding="UTF-8") as f:
-        admins = json.load(f)
+    admins = await self._load_json("admins.json")
 
     if not str(user.id) in admins:
         return await interaction.followup.send(content=f"⛔ {user.mention} is not an admin!", file=discord.File("admins.json"))
 
     del admins[str(user.id)]
-    with open("admins.json", "w", encoding="UTF-8") as f:
-        json.dump(admins, f, indent=2)
+    await self._save_json("admins.json", admins)
 
     await interaction.followup.send(content=f"✅ {user.mention} removed from admin list!", file=discord.File("admins.json"))
 

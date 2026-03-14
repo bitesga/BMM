@@ -6,6 +6,11 @@ from datetime import datetime
 import pytz
 from utils import loadEnv
 
+
+def _load_json_file(path: str):
+  with open(path, "r", encoding="UTF-8") as f:
+    return json.load(f)
+
       
 class BMM(commands.Bot):
   
@@ -317,9 +322,8 @@ class BMM(commands.Bot):
   @tasks.loop(minutes=1)
   async def refresh_admins(self):
     print("starting admin refresh")
-      
-    with open("admins.json", "r", encoding="UTF-8") as f:
-        admins = json.load(f)
+
+    admins = await asyncio.to_thread(_load_json_file, "admins.json")
     self.admins = admins
     print("admin list refreshed")
     
@@ -328,9 +332,8 @@ class BMM(commands.Bot):
   @tasks.loop(minutes=1)
   async def refresh_blocked_admins(self):
     print("starting blocked admin refresh")
-      
-    with open("blockedAdmins.json", "r", encoding="UTF-8") as f:
-        blockedAdmins = json.load(f)
+
+    blockedAdmins = await asyncio.to_thread(_load_json_file, "blockedAdmins.json")
     self.blockedAdmins = blockedAdmins
     print("blocked admin list refreshed")
     

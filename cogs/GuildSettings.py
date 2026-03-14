@@ -14,8 +14,8 @@ class GuildSettings(commands.Cog):
   def __init__(self, bot):
     self.bot = bot
 
-    async def _run_blocking(self, func, *args):
-        return await asyncio.to_thread(func, *args)
+  async def _run_blocking(self, func, *args):
+    return await asyncio.to_thread(func, *args)
          
            
   async def __handle_error(self, function, interaction: discord.Interaction, error: app_commands.AppCommandError):

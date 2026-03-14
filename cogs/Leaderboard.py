@@ -23,6 +23,54 @@ REGIONS = ["EMEA", "SA", "NA", "APAC"]
 ENTHUSIASM_OPTIONS = ["tryhard", "casual"]
 PLAYERS_PER_EMBED = 25
 MAX_PAGE_SIZE = 200
+MAX_EMBED_FIELD_VALUE = 1024
+
+
+def split_embed_field_value(value: str, max_length: int = MAX_EMBED_FIELD_VALUE) -> list[str]:
+    if not value:
+        return ["-"]
+
+    chunks = []
+    current_lines = []
+    current_len = 0
+
+    for line in value.split("\n"):
+        # If one line itself is longer than Discord's field value limit, hard-split it.
+        if len(line) > max_length:
+            if current_lines:
+                chunks.append("\n".join(current_lines))
+                current_lines = []
+                current_len = 0
+
+            for i in range(0, len(line), max_length):
+                chunks.append(line[i:i + max_length])
+            continue
+
+        proposed_len = len(line) if not current_lines else current_len + 1 + len(line)
+        if proposed_len > max_length:
+            chunks.append("\n".join(current_lines))
+            current_lines = [line]
+            current_len = len(line)
+        else:
+            current_lines.append(line)
+            current_len = proposed_len
+
+    if current_lines:
+        chunks.append("\n".join(current_lines))
+
+    return chunks or ["-"]
+
+
+def add_split_field(embed: discord.Embed, name: str, value: str, inline: bool = False):
+    name = name[:256] if name else "Info"
+    chunks = split_embed_field_value(value)
+
+    for idx, chunk in enumerate(chunks):
+        if idx == 0:
+            field_name = name
+        else:
+            field_name = f"{name} (cont. {idx + 1}/{len(chunks)})"[:256]
+        embed.add_field(name=field_name, value=chunk, inline=inline)
 
 
 def get_player_name(bot: commands.Bot, guild: discord.Guild, discord_id: int) -> str:
@@ -95,7 +143,8 @@ def build_summary_embed(board: dict, guild_options: dict, page_index: int, total
     )
 
     elo_text = "rankSystem" if guild_options["ranks"] else "pointSystem"
-    embed.add_field(
+    add_split_field(
+        embed,
         name=elosystems[elo_text]["name"],
         value=elosystems[elo_text]["value"],
         inline=False,
