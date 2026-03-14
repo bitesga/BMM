@@ -32,6 +32,10 @@ async def safe_followup(interaction: discord.Interaction, content: str, ephemera
         return False
 
 
+async def run_blocking(func, *args):
+    return await asyncio.to_thread(func, *args)
+
+
 def handle_points_rank_system(winning_team, losing_team, match_id, privatefactor):
     print(f"Match {match_id}: Applying rank system with privatefactor {privatefactor}")
     for player in winning_team:
@@ -298,7 +302,7 @@ class ResultValidationView(discord.ui.View):
                     
                     
             try:
-                match = mongodb.findMatch(str(self.match_id))
+                match = await run_blocking(mongodb.findMatch, str(self.match_id))
                 if match["validated"]:
                     self.match_evaluated = True
 
@@ -331,10 +335,20 @@ class ResultValidationView(discord.ui.View):
                 print(f"Fetching battle log for Team 1 Player BS ID failed {self.team1[0]['bs_id']}.")
                 return await safe_followup(interaction, f"Could not fetch the battle log for <@{self.team1[0]['discord_id']}> with BS ID: `{self.team1[0]['bs_id']}`.", ephemeral=True)
 
-            self.team1, self.team2 = refreshElos(self.team1, self.team2, interaction.guild.id)
+            self.team1, self.team2 = await run_blocking(refreshElos, self.team1, self.team2, interaction.guild.id)
             elos_before_evaluation = [player["elo"] for player in self.team1 + self.team2]
             print(f"Elos before Evaluation of Match #{self.match_id} on Map {self.bs_map} in {interaction.guild.name}:\n\t{elos_before_evaluation}")
-            winning_team, _, not_founds = evaluate_winner(battle_log, self.team1, self.team2, self.bs_map, self.match_id, self.match_date, interaction.guild_id, self.private_key)
+            winning_team, _, not_founds = await run_blocking(
+                evaluate_winner,
+                battle_log,
+                self.team1,
+                self.team2,
+                self.bs_map,
+                self.match_id,
+                self.match_date,
+                interaction.guild_id,
+                self.private_key,
+            )
 
             if not winning_team:
                 if not_founds:
@@ -347,7 +361,7 @@ class ResultValidationView(discord.ui.View):
 
             match["winner"] = winning_team
             match["validated"] = True
-            mongodb.saveMatch(match)
+            await run_blocking(mongodb.saveMatch, match)
             
             # ELO Updates string erstellen
             eloupdateText = ""
@@ -477,7 +491,7 @@ class ResultValidationView(discord.ui.View):
         print(f"Starting timeout handler for Match #{self.match_id}.")
         
         try:
-            match = mongodb.findMatch(str(self.match_id))
+            match = await run_blocking(mongodb.findMatch, str(self.match_id))
             if match["validated"]:
                 print(f"Match evaluated, updating embed #{self.match_id}.")
                 self.match_evaluated = True
@@ -532,10 +546,20 @@ class ResultValidationView(discord.ui.View):
                     return
 
                 print(f"Evaluating winner for Match #{self.match_id}.")
-                self.team1, self.team2 = refreshElos(self.team1, self.team2, self.guild_id)
+                self.team1, self.team2 = await run_blocking(refreshElos, self.team1, self.team2, self.guild_id)
                 elos_before_evaluation = [player["elo"] for player in self.team1 + self.team2]
                 print(f"Elos davor {elos_before_evaluation}")
-                winning_team, _, not_founds = evaluate_winner(battle_log, self.team1, self.team2, self.bs_map, self.match_id, self.match_date, self.guild_id, self.private_key)
+                winning_team, _, not_founds = await run_blocking(
+                    evaluate_winner,
+                    battle_log,
+                    self.team1,
+                    self.team2,
+                    self.bs_map,
+                    self.match_id,
+                    self.match_date,
+                    self.guild_id,
+                    self.private_key,
+                )
 
                 if not winning_team:
                     if not_founds:

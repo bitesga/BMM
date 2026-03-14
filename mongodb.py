@@ -5,7 +5,13 @@ from datetime import datetime
 
 envData = loadEnv()
 # Verbindung zur MongoDB-Instanz herstellen
-client = MongoClient('localhost', 27017)
+client = MongoClient(
+    'localhost',
+    27017,
+    serverSelectionTimeoutMS=3000,
+    connectTimeoutMS=3000,
+    socketTimeoutMS=5000,
+)
 
 # Datenbank und Collections holen
 bmmDB = client[envData["DB"]]
