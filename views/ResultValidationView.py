@@ -426,7 +426,7 @@ class ResultValidationView(discord.ui.View):
             # Benutzer in der Datenbank aktualisieren
             for user in self.team1 + self.team2:
                 user["in_match"] = False
-                mongodb.saveUser(user)
+                await run_blocking(mongodb.saveUser, user)
 
             self.match_evaluated = True
             embed_validated = discord.Embed(
@@ -459,7 +459,7 @@ class ResultValidationView(discord.ui.View):
         # Benutzer in der Datenbank aktualisieren
         for user in self.team1 + self.team2:
             user["in_match"] = False
-            mongodb.saveUser(user)
+            await run_blocking(mongodb.saveUser, user)
 
         self.match_evaluated = True
         embed_validated = discord.Embed(

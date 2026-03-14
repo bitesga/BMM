@@ -4,19 +4,33 @@ from discord import app_commands
 from discord.app_commands import guild_only
 import mongodb
 import requests
+import asyncio
 from utils import simplify, dynamic_guild_cooldown
 
 
-# Abrufen der Map Details
-fullMapList = requests.get("https://api.brawlapi.com/v1/maps").json()
-fullMapList = fullMapList["list"]
-
-# Valide Map Liste bauen
 validModes = ["Gem Grab", "Brawl Ball", "Heist", "Wipeout", "Knockout", "Bounty", "Hot Zone", "Siege"]
-mapList = []
-for mapData in fullMapList:
-  if simplify(mapData["gameMode"]["name"]) in list(map(simplify, validModes)):
-    mapList.append(mapData["name"])
+mapList = None
+
+
+async def get_valid_map_list():
+    global mapList
+    if mapList is not None:
+        return mapList
+
+    try:
+        response = await asyncio.to_thread(requests.get, "https://api.brawlapi.com/v1/maps", timeout=10)
+        full_map_list = response.json().get("list", [])
+    except Exception:
+        full_map_list = []
+
+    parsed_list = []
+    valid_modes_simplified = set(map(simplify, validModes))
+    for mapData in full_map_list:
+        if simplify(mapData["gameMode"]["name"]) in valid_modes_simplified:
+            parsed_list.append(mapData["name"])
+
+    mapList = parsed_list
+    return mapList
     
     
 async def getCompetitiveMaps(bot, guild_id):
@@ -26,7 +40,7 @@ async def getCompetitiveMaps(bot, guild_id):
     maptext = history[0].content
     maps = maptext.split("\n- ")
     
-    guild_options = mongodb.findGuildOptions(guild_id)
+    guild_options = await asyncio.to_thread(mongodb.findGuildOptions, guild_id)
     
     for removed in guild_options["removed_maps"]:
         maps = [m for m in maps if simplify(m) != simplify(removed)]
@@ -74,13 +88,14 @@ class Maps(commands.Cog):
     if not (str(interaction.user.id) in self.bot.admins or interaction.user.guild_permissions.administrator) or str(interaction.user.id) in self.bot.blockedAdmins:
         return await interaction.response.send_message(content=f"⛔ You are not allowed to use this command.")      
     
-    guild_options = mongodb.findGuildOptions(interaction.guild.id)
+    guild_options = await asyncio.to_thread(mongodb.findGuildOptions, interaction.guild.id)
+    valid_map_list = await get_valid_map_list()
     
-    if not any(simplify(map) == simplify(valid_map) for valid_map in mapList):
+    if not any(simplify(map) == simplify(valid_map) for valid_map in valid_map_list):
         return await interaction.response.send_message(content=f"❓ This Map does not exist.")
 
     # Echten Namen finden für Konsistenz
-    real_map = next(valid_map for valid_map in mapList if simplify(map) == simplify(valid_map))
+    real_map = next(valid_map for valid_map in valid_map_list if simplify(map) == simplify(valid_map))
 
     # Entfernen aus removed_maps, hinzufügen zu added_maps (vereinfacht vergleichen)
     if any(simplify(real_map) == simplify(m) for m in guild_options["removed_maps"]):
@@ -88,7 +103,7 @@ class Maps(commands.Cog):
     if not any(simplify(real_map) == simplify(m) for m in guild_options["added_maps"]):
         guild_options["added_maps"].append(real_map)
 
-    mongodb.saveGuild(guild_options)
+    await asyncio.to_thread(mongodb.saveGuild, guild_options)
     mappool_embed = await getMappoolEmbed(self.bot, interaction.guild.id)
     return await interaction.response.send_message(f"✅ Map {map} added successfully", embed=mappool_embed)
 
@@ -105,19 +120,20 @@ class Maps(commands.Cog):
     if not (str(interaction.user.id) in self.bot.admins or interaction.user.guild_permissions.administrator) or str(interaction.user.id) in self.bot.blockedAdmins:
         return await interaction.response.send_message(content=f"⛔ You are not allowed to use this command.")      
         
-    guild_options = mongodb.findGuildOptions(interaction.guild.id)
+    guild_options = await asyncio.to_thread(mongodb.findGuildOptions, interaction.guild.id)
+    valid_map_list = await get_valid_map_list()
     
-    if not any(simplify(map) == simplify(valid_map) for valid_map in mapList):
+    if not any(simplify(map) == simplify(valid_map) for valid_map in valid_map_list):
         return await interaction.response.send_message(content=f"❓ This Map does not exist.")
 
-    real_map = next(valid_map for valid_map in mapList if simplify(map) == simplify(valid_map))
+    real_map = next(valid_map for valid_map in valid_map_list if simplify(map) == simplify(valid_map))
 
     if simplify(real_map) not in [simplify(m) for m in guild_options["removed_maps"]]:
         guild_options["removed_maps"].append(real_map)
     
     guild_options["added_maps"] = [m for m in guild_options["added_maps"] if simplify(m) != simplify(real_map)]
 
-    mongodb.saveGuild(guild_options)
+    await asyncio.to_thread(mongodb.saveGuild, guild_options)
     
     mappool_embed = await getMappoolEmbed(self.bot, interaction.guild.id)
     return await interaction.response.send_message(f"✅ Map {real_map} removed successfully", embed=mappool_embed)
@@ -134,11 +150,11 @@ class Maps(commands.Cog):
     if not (str(interaction.user.id) in self.bot.admins or interaction.user.guild_permissions.administrator) or str(interaction.user.id) in self.bot.blockedAdmins:
         return await interaction.response.send_message(content=f"⛔ You are not allowed to use this command.")      
     
-    guild_options = mongodb.findGuildOptions(interaction.guild.id)
+    guild_options = await asyncio.to_thread(mongodb.findGuildOptions, interaction.guild.id)
     
     guild_options["removed_maps"] = []
     guild_options["added_maps"] = []
-    mongodb.saveGuild(guild_options)
+    await asyncio.to_thread(mongodb.saveGuild, guild_options)
     
     mappool_embed = await getMappoolEmbed(self.bot, interaction.guild.id)
     return await interaction.response.send_message(f"✅ Maps resetted successfully", embed=mappool_embed)

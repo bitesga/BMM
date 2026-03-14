@@ -1,12 +1,13 @@
 import discord
 from discord.ext import commands
 import mongodb
+import asyncio
 
 from views.MatchmakingView import delete_mm_embed, get_mm_channel_for_region
 
 
 async def delete_mm(bot, interaction: discord.Interaction, region, selected_role: str):
-    deleted_count = mongodb.deleteGuildMM(interaction.guild.id, region, selected_role.lower())
+    deleted_count = await asyncio.to_thread(mongodb.deleteGuildMM, interaction.guild.id, region, selected_role.lower())
     role_text = f" {selected_role}" if selected_role != "Overall" else ""
     if not deleted_count:
         return await interaction.edit_original_response(

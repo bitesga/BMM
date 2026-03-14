@@ -7,6 +7,7 @@ import mongodb
 import random
 import string
 import datetime, pytz
+import asyncio
 from utils import dynamic_guild_cooldown
 
 botAdmins = [324607583841419276, 818879706350092298, 230684337341857792]
@@ -20,18 +21,18 @@ def resetPlayer(player):
   return player
 
 async def resetGuildElo(bot, guild: discord.Guild, new_season_name: str = None, next_reset_date: str = None):
-  guild_options = mongodb.findGuildOptions(guild.id)
-  topPlayers = mongodb.getTop3Global(guild.id)
+  guild_options = await asyncio.to_thread(mongodb.findGuildOptions, guild.id)
+  topPlayers = await asyncio.to_thread(mongodb.getTop3Global, guild.id)
   guild_options["top3_last_season"] = topPlayers[:3]
-  players = mongodb.findGuildUsers(guild.id)
+  players = await asyncio.to_thread(lambda: list(mongodb.findGuildUsers(guild.id)))
   for player in players:
     player = resetPlayer(player)
-    mongodb.saveUser(player)
+    await asyncio.to_thread(mongodb.saveUser, player)
   if new_season_name and next_reset_date:
     guild_options["season"] = new_season_name
     guild_options["next_reset"] = next_reset_date
   print(guild_options)
-  mongodb.saveGuild(guild_options)
+  await asyncio.to_thread(mongodb.saveGuild, guild_options)
   
   
   # Notify the server that the season has been reset
@@ -68,11 +69,11 @@ class BotAdmin(commands.Cog):
 
     await interaction.response.defer()
     
-    guild_options = mongodb.findGuildOptions(interaction.guild.id)
+    guild_options = await asyncio.to_thread(mongodb.findGuildOptions, interaction.guild.id)
 
     # Generate a unique private key
     private_key = generate_private_key()
-    while not is_unique_private_key(private_key, server_id):
+    while not await asyncio.to_thread(is_unique_private_key, private_key, server_id):
         private_key = generate_private_key()
     
     # Create the private room data
@@ -84,7 +85,7 @@ class BotAdmin(commands.Cog):
     }
 
     # Save to database
-    if mongodb.savePrivate(private_room_data):
+    if await asyncio.to_thread(mongodb.savePrivate, private_room_data):
         return await interaction.followup.send(content=f"✅ Private room `{name}` created successfully with key: `{private_key}` in Server with id {server_id}.\nView it by using `/check_stats`")
     else:
         return await interaction.followup.send(content="❌ Failed to create private room. Please try again.")
@@ -233,7 +234,7 @@ class BotAdmin(commands.Cog):
   async def lock_mm(self, interaction: discord.Interaction, reason: str):
     if not interaction.user.id in botAdmins:
         return await interaction.response.send_message(content=f"⛔ You are not allowed to use this command.")
-    mongodb.setLock(reason)
+    await asyncio.to_thread(mongodb.setLock, reason)
     return await interaction.response.send_message(content=f"⛔ Matchmaking locked.")
 
   @lock_mm.error
@@ -246,7 +247,7 @@ class BotAdmin(commands.Cog):
   async def unlock_mm(self, interaction: discord.Interaction):
     if not interaction.user.id in botAdmins:
         return await interaction.response.send_message(content=f"⛔ You are not allowed to use this command.")
-    mongodb.deleteLock()
+    await asyncio.to_thread(mongodb.deleteLock)
     return await interaction.response.send_message(content=f"✅ Matchmaking unlocked.")
 
   @unlock_mm.error

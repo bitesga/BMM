@@ -2,6 +2,7 @@
 from datetime import datetime, timedelta
 import json
 import math
+import asyncio
 
 from discord.ext import commands
 import discord
@@ -298,8 +299,8 @@ class Leaderboard(commands.Cog):
     @app_commands.command(description="show the leaderboard")
     @dynamic_guild_cooldown(seconds=15)
     async def leaderboard(self, interaction: discord.Interaction):
-        guild_options = mongodb.findGuildOptions(interaction.guild.id)
-        boards = build_leaderboard_boards(self.bot, interaction.guild, guild_options)
+        guild_options = await asyncio.to_thread(mongodb.findGuildOptions, interaction.guild.id)
+        boards = await asyncio.to_thread(build_leaderboard_boards, self.bot, interaction.guild, guild_options)
 
         if not boards:
             empty_embed = discord.Embed(

@@ -1,5 +1,6 @@
 from discord.ext import commands
 import discord
+import asyncio
 from discord import app_commands
 from discord.app_commands import guild_only
 import mongodb
@@ -12,6 +13,9 @@ class GuildSettings(commands.Cog):
   
   def __init__(self, bot):
     self.bot = bot
+
+    async def _run_blocking(self, func, *args):
+        return await asyncio.to_thread(func, *args)
          
            
   async def __handle_error(self, function, interaction: discord.Interaction, error: app_commands.AppCommandError):
@@ -32,112 +36,107 @@ class GuildSettings(commands.Cog):
   @app_commands.command(description="lists all guild settings.")
   @dynamic_guild_cooldown(seconds=15)
   async def list_settings(self, interaction: discord.Interaction):
-    # Retrieve guild options from MongoDB
-    guild_options = mongodb.findGuildOptions(interaction.guild.id)
-    
-    # Helper functions
-    def format_boolean(value):
-        return "✅ Enabled" if value else "❌ Disabled"
+        guild_options = await self._run_blocking(mongodb.findGuildOptions, interaction.guild.id)
 
-    def format_list(value):
-        return ", ".join(value) if value else "None"
+        def format_boolean(value):
+            return "✅ Enabled" if value else "❌ Disabled"
 
-    # Create the embed
-    embed = discord.Embed(
-        title=f"{interaction.guild.name} Settings",
-        description="",
-        color=discord.Color.blurple()
-    )
+        def format_list(value):
+            return ", ".join(value) if value else "None"
 
-    # Populate the embed with settings
-    embed.add_field(name="Time Zone", value=f"`{guild_options['tz']}`", inline=False)
-    embed.add_field(name="Removed Maps", value=format_list(guild_options['removed_maps']), inline=False)
-    embed.add_field(name="Added Maps", value=format_list(guild_options['added_maps']), inline=False)
-    embed.add_field(
-        name="Elo System",
-        value="Using **Rank System**" if guild_options['ranks'] else "Using **Point System**",
-        inline=False
-    )
-    embed.add_field(
-        name="Threads Enabled",
-        value=f"{format_boolean(guild_options['threads'])}: Threads for lobbys",
-        inline=False
-    )
-    
-    if not guild_options["ranks"]:
+        embed = discord.Embed(
+            title=f"{interaction.guild.name} Settings",
+            description="",
+            color=discord.Color.blurple()
+        )
+
+        embed.add_field(name="Time Zone", value=f"`{guild_options['tz']}`", inline=False)
+        embed.add_field(name="Removed Maps", value=format_list(guild_options['removed_maps']), inline=False)
+        embed.add_field(name="Added Maps", value=format_list(guild_options['added_maps']), inline=False)
         embed.add_field(
-            name="Double Points on Weekends (Points System)",
-            value=f"{format_boolean(guild_options['doublePointsWeekend'])}: Double points during weekends",
+            name="Elo System",
+            value="Using **Rank System**" if guild_options['ranks'] else "Using **Point System**",
             inline=False
         )
         embed.add_field(
-            name="Double Points for Negative Elo",
-            value=f"{format_boolean(guild_options['doublePointsWeekendNegativeElo'])}: Double points for negative elo players during weekends",
+            name="Threads Enabled",
+            value=f"{format_boolean(guild_options['threads'])}: Threads for lobbys",
             inline=False
         )
-        
-    embed.add_field(name="Current Season", value=f"`{guild_options['season']}`", inline=False)
-    embed.add_field(name="Next Reset Date", value=f"`{guild_options['next_reset']}`", inline=False)
-    embed.add_field(
-        name="Allow Downward Joins",
-        value=f"{format_boolean(guild_options['downward_joins'])}: Higher-ranked players to join lower-ranked queues",
-        inline=False
-    )
-    embed.add_field(
-        name="Separate Matchmaking Queues",
-        value=f"{format_boolean(guild_options['seperate_mm'])}: Separate queues by bs stats (tryhard/casual)",
-        inline=False
-    )
-    if guild_options['seperate_mm']:
-        minimum_trophies = guild_options["minimum_trophies"]
-        minimum_3v3_wins = guild_options["minimum_3v3_wins"]
-        embed.add_field(
-            name="Tryhard Requirements",
-            value=f"Trophies: {minimum_trophies}\n3v3 Wins: {minimum_3v3_wins}",
-            inline=False
-        ) 
-        
-    embed.add_field(
-        name="Separate Matchmaking Roles",
-        value=f"{format_boolean(guild_options['seperate_mm_roles'])}: Roles to separate matchmaking",
-        inline=False
-    )
-    if guild_options['seperate_mm_roles']:
-        roles = ", ".join([interaction.guild.get_role(int(role_id)).mention for role_id in guild_options["mm_roles"]])
-        embed.add_field(
-            name="Matchmaking Roles",
-            value=roles,
-            inline=False
-        ) 
-    
-    embed.add_field(
-        name="Leaderboard Player Limit",
-        value=f"Showing up to `{guild_options['lb_limit']}` players per leaderboard page",
-        inline=False
-    )
-    embed.add_field(
-        name="Leaderboard Roles",
-        value=f"{format_boolean(guild_options['lb_all_roles'])}: Sending seperate LB for each role",
-        inline=False
-    )
-    embed.add_field(
-        name="Anonymous Queues",
-        value=f"{format_boolean(guild_options['anonymous_queues'])}: Players anonymous in queues",
-        inline=False
-    )
-    embed.add_field(
-        name="Elo Boundary",
-        value=f"`{guild_options['eloBoundary']}` maximum elo difference for matchmaking",
-        inline=False
-    )
-    embed.add_field(
-        name="Matchmaking Cooldown",
-        value=f"`{guild_options.get('cooldown_mm', 120)}` seconds ({guild_options.get('cooldown_mm', 120) // 60} minutes)",
-        inline=False
-    )
 
-    # Send the embed
-    await interaction.response.send_message(embed=embed)
+        if not guild_options["ranks"]:
+            embed.add_field(
+                name="Double Points on Weekends (Points System)",
+                value=f"{format_boolean(guild_options['doublePointsWeekend'])}: Double points during weekends",
+                inline=False
+            )
+            embed.add_field(
+                name="Double Points for Negative Elo",
+                value=f"{format_boolean(guild_options['doublePointsWeekendNegativeElo'])}: Double points for negative elo players during weekends",
+                inline=False
+            )
+
+        embed.add_field(name="Current Season", value=f"`{guild_options['season']}`", inline=False)
+        embed.add_field(name="Next Reset Date", value=f"`{guild_options['next_reset']}`", inline=False)
+        embed.add_field(
+            name="Allow Downward Joins",
+            value=f"{format_boolean(guild_options['downward_joins'])}: Higher-ranked players to join lower-ranked queues",
+            inline=False
+        )
+        embed.add_field(
+            name="Separate Matchmaking Queues",
+            value=f"{format_boolean(guild_options['seperate_mm'])}: Separate queues by bs stats (tryhard/casual)",
+            inline=False
+        )
+        if guild_options['seperate_mm']:
+            minimum_trophies = guild_options["minimum_trophies"]
+            minimum_3v3_wins = guild_options["minimum_3v3_wins"]
+            embed.add_field(
+                name="Tryhard Requirements",
+                value=f"Trophies: {minimum_trophies}\n3v3 Wins: {minimum_3v3_wins}",
+                inline=False
+            )
+
+        embed.add_field(
+            name="Separate Matchmaking Roles",
+            value=f"{format_boolean(guild_options['seperate_mm_roles'])}: Roles to separate matchmaking",
+            inline=False
+        )
+        if guild_options['seperate_mm_roles']:
+            roles = ", ".join([interaction.guild.get_role(int(role_id)).mention for role_id in guild_options["mm_roles"]])
+            embed.add_field(
+                name="Matchmaking Roles",
+                value=roles,
+                inline=False
+            )
+
+        embed.add_field(
+            name="Leaderboard Player Limit",
+            value=f"Showing up to `{guild_options['lb_limit']}` players per leaderboard page",
+            inline=False
+        )
+        embed.add_field(
+            name="Leaderboard Roles",
+            value=f"{format_boolean(guild_options['lb_all_roles'])}: Sending seperate LB for each role",
+            inline=False
+        )
+        embed.add_field(
+            name="Anonymous Queues",
+            value=f"{format_boolean(guild_options['anonymous_queues'])}: Players anonymous in queues",
+            inline=False
+        )
+        embed.add_field(
+            name="Elo Boundary",
+            value=f"`{guild_options['eloBoundary']}` maximum elo difference for matchmaking",
+            inline=False
+        )
+        embed.add_field(
+            name="Matchmaking Cooldown",
+            value=f"`{guild_options.get('cooldown_mm', 120)}` seconds ({guild_options.get('cooldown_mm', 120) // 60} minutes)",
+            inline=False
+        )
+
+        await interaction.response.send_message(embed=embed)
 
   @list_settings.error
   async def list_settings_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
@@ -156,7 +155,7 @@ class GuildSettings(commands.Cog):
     if not (str(interaction.user.id) in self.bot.admins or interaction.user.guild_permissions.administrator) or str(interaction.user.id) in self.bot.blockedAdmins:
         return await interaction.response.send_message(content=f"⛔ You are not allowed to use this command.")      
         
-    options = mongodb.findGuildOptions(interaction.guild.id)
+    options = await self._run_blocking(mongodb.findGuildOptions, interaction.guild.id)
     
     # Map the user input to the correct timezone strings
     timezone_mapping = {
@@ -190,7 +189,7 @@ class GuildSettings(commands.Cog):
       return await interaction.response.send_message(f"🫢 Timezone {timezone} - {pytz_timezone} is already set.")
 
     options["tz"] = pytz_timezone
-    mongodb.saveGuild(options)
+    await self._run_blocking(mongodb.saveGuild, options)
     await interaction.response.send_message(f"✅ Timezone set to {timezone} - {pytz_timezone}.")
 
   @timezone.error
@@ -205,9 +204,9 @@ class GuildSettings(commands.Cog):
     if not (str(interaction.user.id) in self.bot.admins or interaction.user.guild_permissions.administrator) or str(interaction.user.id) in self.bot.blockedAdmins:
         return await interaction.response.send_message(content=f"⛔ You are not allowed to use this command.")
     
-    guild_options = mongodb.findGuildOptions(interaction.guild.id)
+    guild_options = await self._run_blocking(mongodb.findGuildOptions, interaction.guild.id)
     guild_options["eloBoundary"] = limit
-    mongodb.saveGuild(guild_options)
+    await self._run_blocking(mongodb.saveGuild, guild_options)
     return await interaction.response.send_message(f"✅ Elo Boundary set to {limit}")
 
   @elo_boundary.error
@@ -225,9 +224,9 @@ class GuildSettings(commands.Cog):
     if cooldown_seconds < 0:
         return await interaction.response.send_message(content="⛔ Cooldown must be a positive number.")
     
-    guild_options = mongodb.findGuildOptions(interaction.guild.id)
+    guild_options = await self._run_blocking(mongodb.findGuildOptions, interaction.guild.id)
     guild_options["cooldown_mm"] = cooldown_seconds
-    mongodb.saveGuild(guild_options)
+    await self._run_blocking(mongodb.saveGuild, guild_options)
     return await interaction.response.send_message(f"✅ Matchmaking cooldown set to {cooldown_seconds} seconds ({cooldown_seconds // 60} minutes)")
 
   @set_mm_cooldown.error
@@ -242,9 +241,9 @@ class GuildSettings(commands.Cog):
     if not (str(interaction.user.id) in self.bot.admins or interaction.user.guild_permissions.administrator) or str(interaction.user.id) in self.bot.blockedAdmins:
         return await interaction.response.send_message(content=f"⛔ You are not allowed to use this command.")
     
-    guild_options = mongodb.findGuildOptions(interaction.guild.id)
+    guild_options = await self._run_blocking(mongodb.findGuildOptions, interaction.guild.id)
     guild_options["next_reset"] = next_reset_date
-    mongodb.saveGuild(guild_options)
+    await self._run_blocking(mongodb.saveGuild, guild_options)
     return await interaction.response.send_message(f"✅ Next Season ends on {next_reset_date}")
 
   @set_season_end.error
@@ -259,14 +258,14 @@ class GuildSettings(commands.Cog):
     if not (str(interaction.user.id) in self.bot.admins or interaction.user.guild_permissions.administrator) or str(interaction.user.id) in self.bot.blockedAdmins:
         return await interaction.response.send_message(content=f"⛔ You are not allowed to use this command.")
     
-    guild_options = mongodb.findGuildOptions(interaction.guild.id)
+    guild_options = await self._run_blocking(mongodb.findGuildOptions, interaction.guild.id)
     if guild_options["lb_all_roles"]:
         guild_options["lb_all_roles"] = False
-        mongodb.saveGuild(guild_options)
+        await self._run_blocking(mongodb.saveGuild, guild_options)
         return await interaction.response.send_message(content=f"🫡 Sending only the top roles lb for each region.")
     else:
         guild_options["lb_all_roles"] = True
-        mongodb.saveGuild(guild_options)
+        await self._run_blocking(mongodb.saveGuild, guild_options)
         return await interaction.response.send_message(f"✅ Sending seperate lb for each role and region.")
 
   @lb_all_roles.error
@@ -281,9 +280,9 @@ class GuildSettings(commands.Cog):
     if not (str(interaction.user.id) in self.bot.admins or interaction.user.guild_permissions.administrator) or str(interaction.user.id) in self.bot.blockedAdmins:
         return await interaction.response.send_message(content=f"⛔ You are not allowed to use this command.")
     
-    guild_options = mongodb.findGuildOptions(interaction.guild.id)
+    guild_options = await self._run_blocking(mongodb.findGuildOptions, interaction.guild.id)
     guild_options["lb_limit"] = limit
-    mongodb.saveGuild(guild_options)
+    await self._run_blocking(mongodb.saveGuild, guild_options)
     return await interaction.response.send_message(f"✅ Lb player limit set to {limit}")
 
   @lb_player_limit.error
@@ -299,14 +298,14 @@ class GuildSettings(commands.Cog):
     if not (str(interaction.user.id) in self.bot.admins or interaction.user.guild_permissions.administrator) or str(interaction.user.id) in self.bot.blockedAdmins:
         return await interaction.response.send_message(content=f"⛔ You are not allowed to use this command.")
     
-    guild_options = mongodb.findGuildOptions(interaction.guild.id)
+    guild_options = await self._run_blocking(mongodb.findGuildOptions, interaction.guild.id)
     if guild_options["doublePointsWeekendNegativeElo"]:
         guild_options["doublePointsWeekendNegativeElo"] = False
-        mongodb.saveGuild(guild_options)
+        await self._run_blocking(mongodb.saveGuild, guild_options)
         return await interaction.response.send_message(content=f"🫡 Double Point Weekends for negative elo players disabled.")
     else:
         guild_options["doublePointsWeekendNegativeElo"] = True
-        mongodb.saveGuild(guild_options)
+        await self._run_blocking(mongodb.saveGuild, guild_options)
         return await interaction.response.send_message(f"✅ Double Point Weekends for negative elo players activated")
 
   @dbl_point_weekends_neg_elo.error
@@ -321,14 +320,14 @@ class GuildSettings(commands.Cog):
     if not (str(interaction.user.id) in self.bot.admins or interaction.user.guild_permissions.administrator) or str(interaction.user.id) in self.bot.blockedAdmins:
         return await interaction.response.send_message(content=f"⛔ You are not allowed to use this command.")
     
-    guild_options = mongodb.findGuildOptions(interaction.guild.id)
+    guild_options = await self._run_blocking(mongodb.findGuildOptions, interaction.guild.id)
     if guild_options["doublePointsWeekend"]:
         guild_options["doublePointsWeekend"] = False
-        mongodb.saveGuild(guild_options)
+        await self._run_blocking(mongodb.saveGuild, guild_options)
         return await interaction.response.send_message(content=f"🫡 Double Point Weekends disabled.")
     else:
         guild_options["doublePointsWeekend"] = True
-        mongodb.saveGuild(guild_options)
+        await self._run_blocking(mongodb.saveGuild, guild_options)
         return await interaction.response.send_message(f"✅ Double Point Weekends activated")
 
   @dbl_point_weekends.error
@@ -343,14 +342,14 @@ class GuildSettings(commands.Cog):
     if not (str(interaction.user.id) in self.bot.admins or interaction.user.guild_permissions.administrator) or str(interaction.user.id) in self.bot.blockedAdmins:
         return await interaction.response.send_message(content=f"⛔ You are not allowed to use this command.")
     
-    guild_options = mongodb.findGuildOptions(interaction.guild.id)
+    guild_options = await self._run_blocking(mongodb.findGuildOptions, interaction.guild.id)
     if guild_options["threads"]:
         guild_options["threads"] = False
-        mongodb.saveGuild(guild_options)
+        await self._run_blocking(mongodb.saveGuild, guild_options)
         return await interaction.response.send_message(content=f"🫡 Matches will be sent in #matches-running.")
     else:
         guild_options["threads"] = True
-        mongodb.saveGuild(guild_options)
+        await self._run_blocking(mongodb.saveGuild, guild_options)
         return await interaction.response.send_message(f"✅ Matches will be in private threads")
 
   @matchchannel_mode.error
@@ -366,14 +365,14 @@ class GuildSettings(commands.Cog):
     if not (str(interaction.user.id) in self.bot.admins or interaction.user.guild_permissions.administrator) or str(interaction.user.id) in self.bot.blockedAdmins:
         return await interaction.response.send_message(content=f"⛔ You are not allowed to use this command.")
     
-    guild_options = mongodb.findGuildOptions(interaction.guild.id)
+    guild_options = await self._run_blocking(mongodb.findGuildOptions, interaction.guild.id)
     if guild_options["anonymous_queues"]:
         guild_options["anonymous_queues"] = False
-        mongodb.saveGuild(guild_options)
+        await self._run_blocking(mongodb.saveGuild, guild_options)
         return await interaction.response.send_message(content=f":loudspeaker:  Players in queue are now visible.")
     else:
         guild_options["anonymous_queues"] = True
-        mongodb.saveGuild(guild_options)
+        await self._run_blocking(mongodb.saveGuild, guild_options)
         return await interaction.response.send_message(f":performing_arts:  Players in queue are now hidden.")
 
   @anonymous_queues.error
@@ -388,14 +387,14 @@ class GuildSettings(commands.Cog):
     if not (str(interaction.user.id) in self.bot.admins or interaction.user.guild_permissions.administrator) or str(interaction.user.id) in self.bot.blockedAdmins:
         return await interaction.response.send_message(content=f"⛔ You are not allowed to use this command.")
     
-    guild_options = mongodb.findGuildOptions(interaction.guild.id)
+    guild_options = await self._run_blocking(mongodb.findGuildOptions, interaction.guild.id)
     if guild_options["downward_joins"]:
         guild_options["downward_joins"] = False
-        mongodb.saveGuild(guild_options)
+        await self._run_blocking(mongodb.saveGuild, guild_options)
         return await interaction.response.send_message(content=f"🫡 Downward Joins deactivated.")
     else:
         guild_options["downward_joins"] = True
-        mongodb.saveGuild(guild_options)
+        await self._run_blocking(mongodb.saveGuild, guild_options)
         return await interaction.response.send_message(f"🔥 Downward Joins active")
 
   @downward_joins.error
@@ -411,21 +410,22 @@ class GuildSettings(commands.Cog):
         return await interaction.response.send_message(content=f"⛔ You are not allowed to use this command.")
     
     await interaction.response.defer(ephemeral=True)
-    guild_options = mongodb.findGuildOptions(interaction.guild.id)
+    guild_options = await self._run_blocking(mongodb.findGuildOptions, interaction.guild.id)
     if guild_options["seperate_mm"]:
         guild_options["seperate_mm"] = False
-        mongodb.saveGuild(guild_options)
+        await self._run_blocking(mongodb.saveGuild, guild_options)
         return await interaction.edit_original_response(content=f"🫡 Matchmaking not seperated anymore")
     else:
         guild_options["seperate_mm"] = True
         guild_options["seperate_mm_roles"] = False
         guild_options["minimum_trophies"] = minimum_trophies
         guild_options["minimum_3v3_wins"] = minimum_3v3_wins
-        for user in mongodb.findGuildUsers(interaction.guild.id):
+        guild_users = await self._run_blocking(lambda: list(mongodb.findGuildUsers(interaction.guild.id)))
+        for user in guild_users:
             if "enthusiasm" in user:
                 del user["enthusiasm"]
-                mongodb.saveUser(user)
-        mongodb.saveGuild(guild_options)
+                await self._run_blocking(mongodb.saveUser, user)
+        await self._run_blocking(mongodb.saveGuild, guild_options)
         return await interaction.edit_original_response(content=f"✅✌️ Seperating matchmaking with tryhard players having more than {minimum_trophies} 🏆 and more than {minimum_3v3_wins} 3v3 wins.")
 
   @seperate_mm.error
@@ -442,10 +442,10 @@ class GuildSettings(commands.Cog):
         return await interaction.response.send_message(content=f"⛔ You are not allowed to use this command.")
     
     await interaction.response.defer(ephemeral=True)
-    guild_options = mongodb.findGuildOptions(interaction.guild.id)
+    guild_options = await self._run_blocking(mongodb.findGuildOptions, interaction.guild.id)
     if guild_options["seperate_mm_roles"]:
         guild_options["seperate_mm_roles"] = False
-        mongodb.saveGuild(guild_options)
+        await self._run_blocking(mongodb.saveGuild, guild_options)
         return await interaction.edit_original_response(content=f"🫡 Matchmaking not seperated anymore")
     else:
         guild_options["seperate_mm_roles"] = True
@@ -462,7 +462,7 @@ class GuildSettings(commands.Cog):
         
         guild_options["mm_roles"] = roles
         print(f"Roles {guild_options['mm_roles']}")
-        mongodb.saveGuild(guild_options)
+        await self._run_blocking(mongodb.saveGuild, guild_options)
         roleslisting = ", ".join(interaction.guild.get_role(role_id).mention for role_id in roles)
         return await interaction.edit_original_response(content=f"✌️ Seperating matchmaking using these roles: {roleslisting}.")
 
@@ -500,7 +500,7 @@ class GuildSettings(commands.Cog):
         return await interaction.response.send_message(content=f"⛔ You are not allowed to use this command.")
     await interaction.response.defer()
     
-    guild_options = mongodb.findGuildOptions(interaction.guild.id)
+    guild_options = await self._run_blocking(mongodb.findGuildOptions, interaction.guild.id)
     modes = ["Ranks System", "Points System"] if guild_options["ranks"] else ["Points System", "Ranks System"]
 
     # Prompt the user for confirmation
@@ -523,7 +523,7 @@ class GuildSettings(commands.Cog):
 
         if msg.content.lower() == "confirm":
             guild_options["ranks"] = not guild_options["ranks"]
-            mongodb.saveGuild(guild_options)
+            await self._run_blocking(mongodb.saveGuild, guild_options)
             await resetGuildElo(self.bot, interaction.guild)
             await interaction.followup.send(content=f"Elo of all players has been set to 0.")
             return await interaction.followup.send(f"✅ You are now using the **{modes[1]}**.")

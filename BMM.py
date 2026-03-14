@@ -24,6 +24,10 @@ class BMM(commands.Bot):
     self._startup_initialized = False
 
 
+  async def _run_blocking(self, func, *args):
+    return await asyncio.to_thread(func, *args)
+
+
   def getOverwrite(self, guild, role1, role2):
     return {
         guild.default_role: discord.PermissionOverwrite(read_messages=False),
@@ -34,7 +38,7 @@ class BMM(commands.Bot):
     
   
   async def getRoles(self, guild: discord.Guild, create=True):
-    guild_options = findGuildOptions(guild.id)
+    guild_options = await self._run_blocking(findGuildOptions, guild.id)
 
     roles = {}
     # Überprüfe vorhandene Rollen basierend auf gespeicherten IDs
@@ -60,7 +64,7 @@ class BMM(commands.Bot):
                         print(f"Failed to create role {key}: {str(e)}")
 
         # Speichere die aktualisierten guild_options
-        saveGuild(guild_options)
+        await self._run_blocking(saveGuild, guild_options)
 
     # Gib die Rollen zurück
     return [roles.get(f"EMEA_ping"), roles.get(f"EMEA_no_ping"), roles.get(f"NA_ping"), roles.get(f"NA_no_ping"),
@@ -68,7 +72,7 @@ class BMM(commands.Bot):
   
         
   async def getChannels(self, guild: discord.Guild, create=False):    
-    guild_options = findGuildOptions(guild.id)
+    guild_options = await self._run_blocking(findGuildOptions, guild.id)
     
     
     # Only Read permission definieren
@@ -96,7 +100,7 @@ class BMM(commands.Bot):
     if create: 
       emea_ping_role, emea_no_ping_role, na_ping_role, na_no_ping_role, sa_ping_role, sa_no_ping_role, apac_ping_role, apac_no_ping_role = tuple(await self.getRoles(guild, True))
       
-      guild_options = findGuildOptions(guild.id)
+      guild_options = await self._run_blocking(findGuildOptions, guild.id)
     
       if not matchmakingCategory:
         matchmakingCategory = await guild.create_category_channel("Matchmaking")
@@ -148,7 +152,7 @@ class BMM(commands.Bot):
         await self._create_tutorial(matchesChannel, tutorialChannel, hostMatchChannel)
         guild_options["how-to-play"] = tutorialChannel.id
       
-      saveGuild(guild_options)
+      await self._run_blocking(saveGuild, guild_options)
 
     return announcementChannel, [emea_mm_channel, na_mm_channel, sa_mm_channel, apac_mm_channel], matchesChannel, auditlogChannel
   

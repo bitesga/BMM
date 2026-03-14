@@ -325,11 +325,10 @@ class Commands(commands.Cog):
       bonusfactor = 2 if datetime.datetime.now(pytz.timezone(guild_options["tz"])).weekday() in [5, 6] and guild_options["doublePointsWeekend"] else 1
       bonusfactorNegativeEloPlayers = 2 if datetime.datetime.now(pytz.timezone(guild_options["tz"])).weekday() in [5, 6] and guild_options["doublePointsWeekendNegativeElo"] else 1
       
-        
       if guild_options["ranks"]:
-          handle_points_rank_system(winning_team, losing_team, match_id, 0.5 if match["private"] else 1)
+          await self._run_blocking(handle_points_rank_system, winning_team, losing_team, match_id, 0.5 if match["private"] else 1)
       else:
-          handle_points_point_system(matchCount, winning_team, losing_team, bonusfactor, bonusfactorNegativeEloPlayers, match_id, 0.5 if match["private"] else 1)
+          await self._run_blocking(handle_points_point_system, matchCount, winning_team, losing_team, bonusfactor, bonusfactorNegativeEloPlayers, match_id, 0.5 if match["private"] else 1)
 
       match["validated"] = True
       match["winner"] = winning_team
@@ -457,7 +456,7 @@ class Commands(commands.Cog):
     user_options = await self._run_blocking(mongodb.findUserOptions, interaction.user.id, interaction.guild.id)
     guild_options = await self._run_blocking(mongodb.findGuildOptions, interaction.guild.id)
  
-    player, bs_id, wartung = getPlayerForBsId(bs_id)
+    player, bs_id, wartung = await self._run_blocking(getPlayerForBsId, bs_id)
     if wartung:
       return await interaction.edit_original_response(content=f"Brawl Stars API in Maintenance, try registering later!")
       
@@ -506,7 +505,7 @@ class Commands(commands.Cog):
     user_options = await self._run_blocking(mongodb.findUserOptions, user.id, interaction.guild.id)
     guild_options = await self._run_blocking(mongodb.findGuildOptions, interaction.guild.id)
     
-    player, bs_id, wartung = getPlayerForBsId(bs_id)
+    player, bs_id, wartung = await self._run_blocking(getPlayerForBsId, bs_id)
     if wartung:
       return await interaction.edit_original_response(content=f"Brawl Stars API in Maintenance, try registering later!")
     
@@ -555,13 +554,13 @@ class Commands(commands.Cog):
     await interaction.response.defer(ephemeral=True)
     
     if user_to_delete:
-      deleted = mongodb.deleteUserByDiscordId(user_to_delete.id, interaction.guild.id)
+      deleted = await self._run_blocking(mongodb.deleteUserByDiscordId, user_to_delete.id, interaction.guild.id)
       if deleted:
           return await interaction.edit_original_response(content=f"✅ Successfully deleted {user_to_delete.display_name} from leaderboard!")
       else:
           return await interaction.edit_original_response(content=f"⚠️ {user_to_delete.display_name} is not registered!")
     if id_of_user_to_delete:
-      deleted = mongodb.deleteUserByDiscordId(id_of_user_to_delete, interaction.guild.id)
+      deleted = await self._run_blocking(mongodb.deleteUserByDiscordId, id_of_user_to_delete, interaction.guild.id)
       if deleted:
           return await interaction.edit_original_response(content=f"✅ Successfully deleted user with id *{id_of_user_to_delete}* from leaderboard!")
       else:
@@ -584,12 +583,12 @@ class Commands(commands.Cog):
     await interaction.response.defer(ephemeral=True)
     
     if user_to_delete:
-      user_data = mongodb.findUserOptions(user_to_delete.id, interaction.guild.id)
-      mongodb.saveUser(resetPlayer(user_data))
+      user_data = await self._run_blocking(mongodb.findUserOptions, user_to_delete.id, interaction.guild.id)
+      await self._run_blocking(mongodb.saveUser, resetPlayer(user_data))
       return await interaction.edit_original_response(content=f"✅ Successfully reset the stats for {user_to_delete.display_name}!")
     if id_of_user_to_delete:
-      user_data = mongodb.findUserOptions(id_of_user_to_delete, interaction.guild.id)
-      mongodb.saveUser(resetPlayer(user_data))
+      user_data = await self._run_blocking(mongodb.findUserOptions, id_of_user_to_delete, interaction.guild.id)
+      await self._run_blocking(mongodb.saveUser, resetPlayer(user_data))
       return await interaction.edit_original_response(content=f"✅ Successfully reset the stats for user with id *{id_of_user_to_delete}*!")
     else:
       return await interaction.edit_original_response(content=f"⚠️ Provide a user or a user id to delete!")
@@ -614,10 +613,10 @@ class Commands(commands.Cog):
     users.add(user3)
     
     for user in users:
-      user_data = mongodb.findUserOptions(user.id, interaction.guild.id)
+      user_data = await self._run_blocking(mongodb.findUserOptions, user.id, interaction.guild.id)
       if user_data:
           user_data["elo"] += points
-          mongodb.saveUser(user_data)
+          await self._run_blocking(mongodb.saveUser, user_data)
           points_added = "+" + str(points) if points >= 0 else str(points)
           await interaction.channel.send(content=f"✅ Successfully updated {user.display_name}'s points! `{points_added}`")
       else:
@@ -647,10 +646,10 @@ class Commands(commands.Cog):
     users.add(user3)
     
     for user in users:
-      user_data = mongodb.findUserOptions(user.id, interaction.guild.id)
+      user_data = await self._run_blocking(mongodb.findUserOptions, user.id, interaction.guild.id)
       if user_data:
           user_data["wins"] += win_amount
-          mongodb.saveUser(user_data)
+          await self._run_blocking(mongodb.saveUser, user_data)
           wins_added = "+" + str(win_amount) if win_amount >= 0 else str(win_amount)
           await interaction.channel.send(content=f"✅ Successfully updated {user.display_name}'s wins! `{wins_added}`")
       else:
@@ -679,10 +678,10 @@ class Commands(commands.Cog):
     users.add(user3)
     
     for user in users:
-      user_data = mongodb.findUserOptions(user.id, interaction.guild.id)
+      user_data = await self._run_blocking(mongodb.findUserOptions, user.id, interaction.guild.id)
       if user_data:
           user_data["matches_played"] += match_amount
-          mongodb.saveUser(user_data)
+          await self._run_blocking(mongodb.saveUser, user_data)
           matches_added = "+" + str(match_amount) if match_amount >= 0 else str(match_amount)
           await interaction.channel.send(content=f"✅ Successfully updated {user.display_name}'s matches played count! `{matches_added}`")
       else:
@@ -721,23 +720,23 @@ class Commands(commands.Cog):
         return
             
     if user:
-      user_data = mongodb.findUserOptions(user.id, interaction.guild.id)
+      user_data = await self._run_blocking(mongodb.findUserOptions, user.id, interaction.guild.id)
 
     
       if user_data:
           user_data["timeout"] = end_date_input
-          mongodb.saveUser(user_data)
+          await self._run_blocking(mongodb.saveUser, user_data)
           return await interaction.edit_original_response(content=f"✅ {user.display_name} timed out until: `{end_date}`.")
         
       else:
           return await interaction.edit_original_response(content=f"⚠️ {user.display_name} is not registered!")
     elif role:
-      guild_options = mongodb.findGuildOptions(interaction.guild.id)
+      guild_options = await self._run_blocking(mongodb.findGuildOptions, interaction.guild.id)
       
       if not 'roles_timeout' in guild_options:
         guild_options['roles_timeout'] = []
       guild_options['roles_timeout'].append(role.id)
-      mongodb.saveGuild(guild_options)
+      await self._run_blocking(mongodb.saveGuild, guild_options)
       return await interaction.edit_original_response(content=f"✅ {role.mention} timed out until: `{end_date}`.")
     else:
       return await interaction.edit_original_response(content=f"⚠️ Provide a user or a role to timeout!")
@@ -759,20 +758,20 @@ class Commands(commands.Cog):
     await interaction.response.defer()
     
     if user:
-      user_data = mongodb.findUserOptions(user.id, interaction.guild.id)
+      user_data = await self._run_blocking(mongodb.findUserOptions, user.id, interaction.guild.id)
       if user_data:
           user_data["timeout"] = datetime.datetime.now() - datetime.timedelta(days=1)
-          mongodb.saveUser(user_data)
+          await self._run_blocking(mongodb.saveUser, user_data)
           return await interaction.edit_original_response(content=f"✅ {user.display_name} not on timeout anymore.")
       else:
           return await interaction.edit_original_response(content=f"⚠️ {user.display_name} is not registered!")
     elif role:
-      guild_options = mongodb.findGuildOptions(interaction.guild.id)
+      guild_options = await self._run_blocking(mongodb.findGuildOptions, interaction.guild.id)
       if not 'roles_timeout' in guild_options:
         guild_options['roles_timeout'] = []
       if role.id in guild_options['roles_timeout']:
         guild_options['roles_timeout'].remove(role.id)
-      mongodb.saveGuild(guild_options)
+      await self._run_blocking(mongodb.saveGuild, guild_options)
       return await interaction.edit_original_response(content=f"✅ {role.mention} not on timeout anymore.")
     else:
       return await interaction.edit_original_response(content=f"⚠️ Provide a user or a role to remove from timeout!")
@@ -795,7 +794,7 @@ class Commands(commands.Cog):
     if not (str(interaction.user.id) in self.bot.admins or interaction.user.guild_permissions.administrator) or str(interaction.user.id) in self.bot.blockedAdmins:
         return await interaction.edit_original_response(content="⛔ You are not allowed to use this command.")
 
-    guild_options = mongodb.findGuildOptions(interaction.guild.id)
+    guild_options = await self._run_blocking(mongodb.findGuildOptions, interaction.guild.id)
 
     # Optionen sammeln
     roles = []
@@ -825,10 +824,10 @@ class Commands(commands.Cog):
         return await interaction.edit_original_response(content=f"⛔ You are not allowed to use this command.")
       
         
-    user_data = mongodb.findUserOptions(user.id, interaction.guild.id)
+    user_data = await self._run_blocking(mongodb.findUserOptions, user.id, interaction.guild.id)
     if user_data:
         user_data["enthusiasm"] = enthusiasm
-        mongodb.saveUser(user_data)
+        await self._run_blocking(mongodb.saveUser, user_data)
         return await interaction.edit_original_response(content=f"✅ {user.display_name} is now a {enthusiasm}.")
     else:
         return await interaction.edit_original_response(content=f"⚠️ {user.display_name} is not registered!")
@@ -848,10 +847,10 @@ class Commands(commands.Cog):
     if not (str(interaction.user.id) in self.bot.admins or interaction.user.guild_permissions.administrator) or str(interaction.user.id) in self.bot.blockedAdmins:
         return await interaction.edit_original_response(content=f"⛔ You are not allowed to use this command.")
         
-    user_data = mongodb.findUserOptions(user.id, interaction.guild.id)
+    user_data = await self._run_blocking(mongodb.findUserOptions, user.id, interaction.guild.id)
     if user_data:
         user_data["in_match"] = False
-        mongodb.saveUser(user_data)
+        await self._run_blocking(mongodb.saveUser, user_data)
         return await interaction.edit_original_response(content=f"✅ {user.display_name} not in match anymore.")
     else:
         return await interaction.edit_original_response(content=f"⚠️ {user.display_name} is not registered!")
@@ -867,8 +866,8 @@ class Commands(commands.Cog):
   @app_commands.command(description="view a users stats.")
   @dynamic_guild_cooldown(seconds=15)
   async def check_stats(self, interaction: discord.Interaction, user: discord.Member):
-    user_data = mongodb.findUserOptions(user.id, interaction.guild.id) 
-    guild_options = mongodb.findGuildOptions(interaction.guild.id)
+    user_data = await self._run_blocking(mongodb.findUserOptions, user.id, interaction.guild.id) 
+    guild_options = await self._run_blocking(mongodb.findGuildOptions, interaction.guild.id)
     
     if not user_data["bs_id"]:
       not_registered_embed = discord.Embed(
@@ -896,7 +895,8 @@ class Commands(commands.Cog):
     user_stats_embed.add_field(name="BS ID", value=f"#{user_data['bs_id']}", inline=False)
     
     privates_text = ""
-    for private in mongodb.getAllPrivates(str(interaction.guild.id)):
+    all_privates = await self._run_blocking(mongodb.getAllPrivates, str(interaction.guild.id))
+    for private in all_privates or []:
       if "members" in private and user.id in private["members"]:
         privates_text += f"{private['name']} - Expires: {private['expiration_date'].strftime('%d.%m.%Y, %H:%M')}\n"
         
