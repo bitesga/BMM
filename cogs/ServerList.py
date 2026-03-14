@@ -33,7 +33,7 @@ class ServerList(commands.Cog):
     if not serverListChannel:
         return
     
-    messages = [message async for message in serverListChannel.history()]
+    messages = [message async for message in serverListChannel.history(limit=50)]
     if not messages:
             return await serverListChannel.send(embed=serverListEmbed)
     for msg in messages:

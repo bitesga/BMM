@@ -5,6 +5,7 @@ import json
 import os
 import re
 import time
+import asyncio
 
 """
 Load correct env
@@ -52,9 +53,12 @@ async def fetchBattleLog(bs_id):
   headers = {
       "Authorization": f"Bearer {envData['BsApi']}"
   }
-  response = requests.get(url, headers=headers)
-  if response.status_code == 200:
-      return response.json()["items"]
+  try:
+    response = await asyncio.to_thread(requests.get, url, headers=headers, timeout=10)
+    if response.status_code == 200:
+      return response.json().get("items")
+  except Exception:
+    return None
 
 # -----------------------------------------------------------------------------------------------------------------------
 

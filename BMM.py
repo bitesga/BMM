@@ -358,7 +358,9 @@ class BMM(commands.Bot):
     return general_info_channel
      
 
-intents = discord.Intents.all()
+intents = discord.Intents.default()
+intents.members = True
+intents.message_content = True
 bot = BMM(intents=intents)
 envData = loadEnv()
 bot.run(envData['TOKEN'])
