@@ -88,7 +88,6 @@ class BMM(commands.Bot):
     sa_mm_channel = guild.get_channel(guild_options.get("sa-mm"))
     apac_mm_channel = guild.get_channel(guild_options.get("apac-mm"))
     matchesChannel = guild.get_channel(guild_options.get("matches-running"))
-    leaderboardChannel = guild.get_channel(guild_options.get("leaderboard"))
     issuesReportChannel = guild.get_channel(guild_options.get("issue-report"))
     auditlogChannel = guild.get_channel(guild_options.get("audit-log"))
     tutorialChannel = guild.get_channel(guild_options.get("how-to-play"))
@@ -134,9 +133,6 @@ class BMM(commands.Bot):
       if not matchesChannel:
         matchesChannel = await matchmakingCategory.create_text_channel("matches-running", overwrites=onlyRead, topic="view running matches and join your lobby")
         guild_options["matches-running"] = matchesChannel.id
-      if not leaderboardChannel:
-        leaderboardChannel = await matchmakingCategory.create_text_channel("leaderboard", overwrites=onlyRead, topic="check the leaderboard to post your search")
-        guild_options["leaderboard"] = leaderboardChannel.id
       if not issuesReportChannel:
         issuesReportChannel = await matchmakingCategory.create_text_channel("issue-report", topic="post any problems here")
         await issuesReportChannel.send("Report any problems here.")
@@ -154,7 +150,7 @@ class BMM(commands.Bot):
       
       saveGuild(guild_options)
 
-    return announcementChannel, [emea_mm_channel, na_mm_channel, sa_mm_channel, apac_mm_channel], matchesChannel, leaderboardChannel, auditlogChannel
+    return announcementChannel, [emea_mm_channel, na_mm_channel, sa_mm_channel, apac_mm_channel], matchesChannel, auditlogChannel
   
   
   async def _create_tutorial(self, matchesChannel, tutorialChannel, hostMatchChannel):
@@ -240,7 +236,7 @@ class BMM(commands.Bot):
 
       
   async def delete_all_channels(self, guild: discord.Guild, guild_options):
-    for channel_name in ["bot-announcements", "pl-bot-chat", "emea-mm", "na-mm", "sa-mm", "apac-mm", "matches-running", "leaderboard", "issue-report", "audit-log", "how-to-play"]:
+    for channel_name in ["bot-announcements", "pl-bot-chat", "emea-mm", "na-mm", "sa-mm", "apac-mm", "matches-running", "issue-report", "audit-log", "how-to-play"]:
         if channel_name in guild_options:
           channel = guild.get_channel(guild_options[channel_name])
           if channel:
