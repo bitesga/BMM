@@ -154,7 +154,7 @@ class BMM(commands.Bot):
       
       await self._run_blocking(saveGuild, guild_options)
 
-    return announcementChannel, [emea_mm_channel, na_mm_channel, sa_mm_channel, apac_mm_channel], matchesChannel, auditlogChannel
+    return announcementChannel, [emea_mm_channel, na_mm_channel, sa_mm_channel, apac_mm_channel], matchesChannel, issuesReportChannel, auditlogChannel
   
   
   async def _create_tutorial(self, matchesChannel, tutorialChannel, hostMatchChannel):
