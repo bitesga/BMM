@@ -308,7 +308,7 @@ class ResultValidationView(discord.ui.View):
 
                     winning_team = match["winner"]
                     embed_validated = discord.Embed(
-                        title=f"Ô£à Match #{self.match_id} Result Validated Ô£à",
+                        title=f"[OK] Match #{self.match_id} Result Validated",
                         description=f'Winners: <@{winning_team[0]["discord_id"]}> <@{winning_team[1]["discord_id"]}> <@{winning_team[2]["discord_id"]}>',
                         color=discord.Color.green()
                     )
@@ -377,7 +377,7 @@ class ResultValidationView(discord.ui.View):
             self.match_evaluated = True
                 
             embed_validated = discord.Embed(
-                title=f"Ô£à Match #{self.match_id} Result Validated Ô£à",
+                title=f"[OK] Match #{self.match_id} Result Validated",
                 description=f'Winners: <@{winning_team[0]["discord_id"]}> <@{winning_team[1]["discord_id"]}> <@{winning_team[2]["discord_id"]}>',
                 color=discord.Color.green()
             )
@@ -413,7 +413,7 @@ class ResultValidationView(discord.ui.View):
         self.users_voted_cancel.add(interaction.user.id)
 
         embed = discord.Embed(
-            title=f"­ƒÅå Match #{self.match_id} Result Validation ­ƒÅå",
+            title=f"Match #{self.match_id} Result Validation",
             description=f"Click the button below to validate the match result.\nResults must be submitted within 30 minutes.\nVotes for cancel: {len(self.users_voted_cancel)}/4",
             color=discord.Color.blurple()
         )
@@ -430,8 +430,8 @@ class ResultValidationView(discord.ui.View):
 
             self.match_evaluated = True
             embed_validated = discord.Embed(
-                title=f"­ƒÜ½ Match #{self.match_id} Cancelled ­ƒÜ½",
-                description=f'Players can join a new natch now.',
+                title=f"Match #{self.match_id} Cancelled",
+                description="Players can join a new match now.",
             )
             
             await interaction.edit_original_response(embed=embed_validated, view=None)
@@ -454,7 +454,7 @@ class ResultValidationView(discord.ui.View):
             return
         
         if not ((str(interaction.user.id) in self.bot.admins or interaction.user.guild_permissions.administrator) and not str(interaction.user.id) in self.bot.blockedAdmins):
-            return await safe_followup(interaction, "Ôøö This button is reserved for admins.", ephemeral=True)
+            return await safe_followup(interaction, "This button is reserved for admins.", ephemeral=True)
 
         # Benutzer in der Datenbank aktualisieren
         for user in self.team1 + self.team2:
@@ -463,8 +463,8 @@ class ResultValidationView(discord.ui.View):
 
         self.match_evaluated = True
         embed_validated = discord.Embed(
-            title=f"­ƒÜ½ Match #{self.match_id} Cancelled ­ƒÜ½",
-            description=f'Players can join a new natch now.',
+            title=f"Match #{self.match_id} Cancelled",
+            description="Players can join a new match now.",
         )
         
         await interaction.edit_original_response(embed=embed_validated, view=None)
@@ -498,7 +498,7 @@ class ResultValidationView(discord.ui.View):
 
                 winning_team = match["winner"]
                 embed_validated = discord.Embed(
-                    title=f"Ô£à Match #{self.match_id} Result Validated Ô£à",
+                    title=f"[OK] Match #{self.match_id} Result Validated",
                     description=f'Winners: <@{winning_team[0]["discord_id"]}> <@{winning_team[1]["discord_id"]}> <@{winning_team[2]["discord_id"]}>',
                     color=discord.Color.green()
                 )
@@ -522,7 +522,7 @@ class ResultValidationView(discord.ui.View):
                 
 
         timeout_message = discord.Embed(
-            title=f"ÔÅ│ Match #{self.match_id} Result Validation Timed Out ÔÅ│",
+            title=f"Match #{self.match_id} Result Validation Timed Out",
             description="Result not validated. Start a new match and try again.",
             color=discord.Color.red()
         )
@@ -542,7 +542,7 @@ class ResultValidationView(discord.ui.View):
                         await self.message.edit(embed=timeout_message, view=None)
                        
                     if self.auditlogChannel: 
-                        await self.auditlogChannel.send(embed=discord.Embed(title=f"ÔÜá´©Å Match #{self.match_id} on map {self.bs_map} validation timed out. No BattleLog found. ÔÜá´©Å",description="", color=discord.Color.yellow()))
+                        await self.auditlogChannel.send(embed=discord.Embed(title=f"Match #{self.match_id} on map {self.bs_map} validation timed out. No battle log found.",description="", color=discord.Color.yellow()))
                     return
 
                 print(f"Evaluating winner for Match #{self.match_id}.")
@@ -574,12 +574,12 @@ class ResultValidationView(discord.ui.View):
 
                     # Audit-Log f├╝r Timeout hinzuf├╝gen
                     if self.auditlogChannel:
-                        return await self.auditlogChannel.send(embed=discord.Embed(title=f"ÔÜá´©Å Match #{self.match_id} validation timed out. No winner could be determined. ÔÜá´©Å",description=f"(The map {self.bs_map} could not be found)", color=discord.Color.yellow()))
+                        return await self.auditlogChannel.send(embed=discord.Embed(title=f"Match #{self.match_id} validation timed out. No winner could be determined.",description=f"(The map {self.bs_map} could not be found)", color=discord.Color.yellow()))
                     
 
                 # Erfolgreiche Validierung
                 embed_validated = discord.Embed(
-                    title=f"Ô£à Match #{self.match_id} Result Validated Ô£à",
+                    title=f"[OK] Match #{self.match_id} Result Validated",
                     description=f'Winners: <@{winning_team[0]["discord_id"]}> <@{winning_team[1]["discord_id"]}> <@{winning_team[2]["discord_id"]}>',
                     color=discord.Color.green()
                 )
@@ -606,7 +606,7 @@ class ResultValidationView(discord.ui.View):
 
                 # Audit-Log f├╝r Fehler
                 if self.auditlogChannel:
-                    await self.auditlogChannel.send(embed=discord.Embed(title=f"ÔØî An error occurred during Match #{self.match_id} validation: {str(e)} ÔØî", description="", color=discord.Color.red()))
+                    await self.auditlogChannel.send(embed=discord.Embed(title=f"An error occurred during Match #{self.match_id} validation: {str(e)}", description="", color=discord.Color.red()))
 
         if self.thread and self.message:
             try:
