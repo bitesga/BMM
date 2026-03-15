@@ -118,7 +118,7 @@ def refreshElos(team1, team2, guild_id):
  
 def check_player_in_match(user, battle_team):
     """
-    Pr├╝ft, ob ein Spieler (BS-ID) in einem Team vorhanden ist.
+    Prüft, ob ein Spieler (BS-ID) in einem Team vorhanden ist.
     """
     user_tag = user["bs_id"].replace('#', '')
     for player in battle_team:
@@ -129,13 +129,13 @@ def check_player_in_match(user, battle_team):
 
 def is_valid_team(battle_teams, team1, team2, match_id, match_idx):
     """
-    ├£berpr├╝ft die ├£bereinstimmung der Teams Spieler f├╝r Spieler und loggt fehlende Spieler.
+    Prüft die Übereinstimmung der Teams Spieler für Spieler und loggt fehlende Spieler.
     """
     team1_battle, team2_battle = battle_teams
     team1_count, team2_count = 0, 0
     not_founds = []
 
-    # Pr├╝fe Team 1
+    # Prüfe Team 1
     print(f"Match {match_id}: Verifying Team 1 in match {match_idx + 1}...")
     for user in team1:
         if not check_player_in_match(user, team1_battle):
@@ -145,7 +145,7 @@ def is_valid_team(battle_teams, team1, team2, match_id, match_idx):
         else:
             team1_count += 1
 
-    # Pr├╝fe Team 2
+    # Prüfe Team 2
     print(f"Match {match_id}: Verifying Team 2 in match {match_idx + 1}...")
     for user in team2:
         if not check_player_in_match(user, team2_battle):
@@ -329,7 +329,7 @@ class ResultValidationView(discord.ui.View):
                 print(f"An error occurred on check result btn for Match #{self.match_id}: {str(e)}")
                 
 
-            # Ergebnispr├╝fung
+            # Ergebnisprüfung
             battle_log = await fetchBattleLog(self.team1[0]["bs_id"])
             if not battle_log:
                 print(f"Fetching battle log for Team 1 Player BS ID failed {self.team1[0]['bs_id']}.")
@@ -481,7 +481,7 @@ class ResultValidationView(discord.ui.View):
         
     async def on_timeout(self):
         """
-        Funktion, die ausgef├╝hrt wird, wenn der Button nach Timeout deaktiviert wird.
+        Funktion, die ausgeführt wird, wenn der Button nach Timeout deaktiviert wird.
         """
         
         _, _, _, _, auditlogChannel = await self.bot.getChannels(self.bot.get_guild(self.guild_id))
@@ -531,7 +531,7 @@ class ResultValidationView(discord.ui.View):
         if not self.match_evaluated:
             print(f"Match #{self.match_id} on map {self.bs_map} has not been evaluated yet. Proceeding with result validation.")
             
-            # Ergebnispr├╝fung
+            # Ergebnisprüfung
             try:
                 print(f"Fetching battle log for Team 1 Player BS ID: {self.team1[0]['bs_id']}.")
                 battle_log = await fetchBattleLog(self.team1[0]["bs_id"])

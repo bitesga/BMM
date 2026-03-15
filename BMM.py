@@ -29,6 +29,9 @@ class BMM(commands.Bot):
     self._startup_initialized = False
     self._startup_lock = asyncio.Lock()
     self._background_tasks_started = False
+    self._disconnect_since_monotonic = None
+    self._gateway_watchdog_task = None
+    self._disconnect_grace_seconds = int(os.getenv("BMM_GATEWAY_GRACE_SECONDS", "180"))
 
 
   async def _run_blocking(self, func, *args):
@@ -263,12 +266,16 @@ class BMM(commands.Bot):
     
 
   async def on_ready(self):
+    self._disconnect_since_monotonic = None
+
     async with self._startup_lock:
       if not self._background_tasks_started:
         if not self.refresh_admins.is_running():
           self.refresh_admins.start()
         if not self.refresh_blocked_admins.is_running():
           self.refresh_blocked_admins.start()
+        if self._gateway_watchdog_task is None or self._gateway_watchdog_task.done():
+          self._gateway_watchdog_task = asyncio.create_task(self._gateway_watchdog_loop())
         self._background_tasks_started = True
 
       if self._startup_initialized:
@@ -315,6 +322,33 @@ class BMM(commands.Bot):
           print(f"No permission to clean server {guild.name}")
         except Exception as e:
           print(f"Unknown error cleaning {guild.name}: {str(e)}")
+
+
+  async def on_resumed(self):
+    self._disconnect_since_monotonic = None
+    print("Gateway session resumed.")
+
+
+  async def on_disconnect(self):
+    if self._disconnect_since_monotonic is None:
+      self._disconnect_since_monotonic = asyncio.get_running_loop().time()
+      print("Gateway disconnected. Starting disconnect watchdog.")
+
+
+  async def _gateway_watchdog_loop(self):
+    while not self.is_closed():
+      await asyncio.sleep(30)
+
+      if self._disconnect_since_monotonic is None:
+        continue
+
+      disconnected_for = asyncio.get_running_loop().time() - self._disconnect_since_monotonic
+      if disconnected_for >= self._disconnect_grace_seconds:
+        print(
+          f"Gateway disconnected for {int(disconnected_for)}s (grace {self._disconnect_grace_seconds}s). "
+          "Forcing restart so systemd can recover."
+        )
+        os._exit(1)
             
     
   
