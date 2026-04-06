@@ -124,7 +124,7 @@ class General(commands.Cog):
   @app_commands.command(description="creates all needed pl channels")
   @dynamic_guild_cooldown(seconds=15)
   async def install(self, interaction: discord.Interaction):
-    if not (str(interaction.user.id) in self.bot.admins or interaction.user.guild_permissions.administrator) or str(interaction.user.id) in self.bot.blockedAdmins:
+    if not (interaction.user.guild_permissions.administrator) or str(interaction.user.id) in self.bot.blockedAdmins:
           return await interaction.response.send_message(content="⛔ You are not allowed to use this command.")
         
     await interaction.response.defer(ephemeral=True)
@@ -140,7 +140,7 @@ class General(commands.Cog):
   @app_commands.command(description="deletes all channels and roles and leaves the server")
   @dynamic_guild_cooldown(seconds=15)
   async def uninstall(self, interaction: discord.Interaction):
-    if not (str(interaction.user.id) in self.bot.admins or interaction.user.guild_permissions.administrator) or str(interaction.user.id) in self.bot.blockedAdmins:
+    if not (interaction.user.guild_permissions.administrator) or str(interaction.user.id) in self.bot.blockedAdmins:
         return await interaction.response.send_message(content=f"⛔ You are not allowed to use this command.")
       
     guild_options = findGuildOptions(interaction.guild.id)

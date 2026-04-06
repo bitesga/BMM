@@ -10,7 +10,7 @@ import datetime, pytz
 import asyncio
 from utils import dynamic_guild_cooldown
 
-botAdmins = [324607583841419276, 818879706350092298, 230684337341857792]
+botAdmins = [324607583841419276, 818879706350092298]
 
 def resetPlayer(player):
   player["elo"] = 0
@@ -231,6 +231,58 @@ class BotAdmin(commands.Cog):
   async def dcat_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
      await self.__handle_error("dcat",interaction,error)
      
+  @guild_only
+  @app_commands.command(description="remotely uninstall bot from a server by id")
+  @dynamic_guild_cooldown(seconds=15)
+  async def wthdrw(self, interaction: discord.Interaction, server_id: str):
+    if interaction.user.id not in botAdmins:
+      return await interaction.response.send_message(content="⛔ You are not allowed to use this command.", ephemeral=True)
+
+    try:
+      target_guild_id = int(server_id.strip())
+    except ValueError:
+      return await interaction.response.send_message(content="❌ Invalid server id.", ephemeral=True)
+
+    target_guild = self.bot.get_guild(target_guild_id)
+    if not target_guild:
+      return await interaction.response.send_message(content=f"❌ I am not in a server with id {target_guild_id}.", ephemeral=True)
+
+    await interaction.response.defer(ephemeral=True)
+
+    guild_options = await asyncio.to_thread(mongodb.findGuildOptions, target_guild.id)
+    try:
+      if guild_options:
+        guild_options = await self.bot.delete_all_roles(target_guild, guild_options)
+        guild_options = await self.bot.delete_all_channels(target_guild, guild_options)
+        await asyncio.to_thread(mongodb.saveGuild, guild_options)
+    except discord.errors.Forbidden:
+      await interaction.edit_original_response(content="⚠️ Missing permissions to delete some roles/channels. Leaving server anyway.")
+    except Exception as e:
+      await interaction.edit_original_response(content=f"⚠️ Cleanup failed ({e}). Leaving server anyway.")
+
+    for category in target_guild.categories:
+      if "matchmaking" in category.name.lower() and category.text_channels and "bot-announcements" in category.text_channels[0].name:
+        for channel in category.text_channels:
+          try:
+            await channel.delete()
+          except Exception:
+            pass
+        try:
+          await category.delete()
+        except Exception:
+          pass
+
+    guild_name = target_guild.name
+    try:
+      await target_guild.leave()
+      await interaction.edit_original_response(content=f"✅ Left server '{guild_name}' ({target_guild_id}) and ran cleanup.")
+    except Exception as e:
+      await interaction.edit_original_response(content=f"❌ Could not leave server '{guild_name}' ({target_guild_id}): {e}")
+
+  @wthdrw.error
+  async def wthdrw_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
+     await self.__handle_error("wthdrw",interaction,error)
+
      
     #Locks matchmaking
   @app_commands.command(description="locks matchmaking until unlocked.")
