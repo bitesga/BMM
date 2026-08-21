@@ -1,6 +1,93 @@
+import base64
+import hashlib
+import os
+from typing import Any
+
+from cryptography.fernet import Fernet
 from pymongo import MongoClient
 from utils import loadEnv
 from datetime import datetime
+
+
+def _get_encryption_key() -> str | None:
+    """Return a Fernet-compatible key from env vars. Accepts a raw string or an existing base64 key."""
+    key = None
+    for key_name in ("APP_ENCRYPTION_KEY", "MONGO_ENCRYPTION_KEY", "ENCRYPTION_KEY"):
+        key = os.getenv(key_name) or envData.get(key_name)
+        if key:
+            break
+
+    if not key:
+        return None
+
+    try:
+        base64.urlsafe_b64decode(key.encode() + b"=")
+        return key
+    except Exception:
+        digest = hashlib.sha256(key.encode("utf-8")).digest()
+        return base64.urlsafe_b64encode(digest).decode("utf-8")
+
+
+def _get_cipher() -> Fernet | None:
+    key = _get_encryption_key()
+    if not key:
+        return None
+    try:
+        return Fernet(key)
+    except Exception:
+        return None
+
+
+def _encrypt_value(value: Any) -> Any:
+    if value is None or isinstance(value, (bool, int, float)):
+        return value
+    cipher = _get_cipher()
+    if cipher is None or not isinstance(value, str):
+        return value
+    try:
+        return "enc:" + cipher.encrypt(value.encode("utf-8")).decode("utf-8")
+    except Exception:
+        return value
+
+
+def _decrypt_value(value: Any) -> Any:
+    if not isinstance(value, str) or not value.startswith("enc:"):
+        return value
+    cipher = _get_cipher()
+    if cipher is None:
+        return value
+    try:
+        return cipher.decrypt(value[4:].encode("utf-8")).decode("utf-8")
+    except Exception:
+        return value
+
+
+def _encrypt_nested_fields(obj: Any, sensitive_fields: set[str]) -> Any:
+    if isinstance(obj, dict):
+        result = {}
+        for key, value in obj.items():
+            if key in sensitive_fields:
+                result[key] = _encrypt_value(value)
+            else:
+                result[key] = _encrypt_nested_fields(value, sensitive_fields)
+        return result
+    if isinstance(obj, list):
+        return [_encrypt_nested_fields(item, sensitive_fields) for item in obj]
+    return obj
+
+
+def _decrypt_nested_fields(obj: Any, sensitive_fields: set[str]) -> Any:
+    if isinstance(obj, dict):
+        result = {}
+        for key, value in obj.items():
+            if key in sensitive_fields:
+                result[key] = _decrypt_value(value)
+            else:
+                result[key] = _decrypt_nested_fields(value, sensitive_fields)
+        return result
+    if isinstance(obj, list):
+        return [_decrypt_nested_fields(item, sensitive_fields) for item in obj]
+    return obj
 
 
 envData = loadEnv()
@@ -41,12 +128,15 @@ def saveGuild(guild_options):
 
 def findGuildOptions(guild_id):
     try:
-        return guilds.find_one({"guild_id": guild_id}) or {
-            "guild_id": guild_id, "tz": "Europe/Berlin", "removed_maps": [], "added_maps": [], "threads": False,
-            "top3_last_season": [], "doublePointsWeekend": False, "season" : "", "next_reset" : "", "downward_joins" : False,
-            "seperate_mm": False, "seperate_mm_roles" : False, "anonymous_queues" : True, "ranks": False,
-            "doublePointsWeekendNegativeElo": False, "eloBoundary" : 200, "lb_limit" : 100, "lb_all_roles" : True, "cooldown_mm" : 0
-        }
+        guild_data = guilds.find_one({"guild_id": guild_id})
+        if guild_data is None:
+            return {
+                "guild_id": guild_id, "tz": "Europe/Berlin", "removed_maps": [], "added_maps": [], "threads": False,
+                "top3_last_season": [], "doublePointsWeekend": False, "season" : "", "next_reset" : "", "downward_joins" : False,
+                "seperate_mm": False, "seperate_mm_roles" : False, "anonymous_queues" : True, "ranks": False,
+                "doublePointsWeekendNegativeElo": False, "eloBoundary" : 200, "lb_limit" : 100, "lb_all_roles" : True, "cooldown_mm" : 0
+            }
+        return guild_data
     except Exception as e:
         print(f"Error finding guild {guild_id}: {e}")
         return None
@@ -56,16 +146,20 @@ def findGuildOptions(guild_id):
 def saveMatch(match):
     try:
         match["created_at"] = datetime.now()  # Setze das Erstellungsdatum
+        match = _encrypt_nested_fields(match, {"bs_id"})
         matches.update_one({"match_id": match["match_id"]}, {"$set": match}, upsert=True)
         return True  # Erfolg
     except Exception as e:
-        print(f"Error saving user {match['guild_id']}: {e}")
+        print(f"Error saving user {match.get('guild_id')}: {e}")
         return False  # Fehler
 
 
 def findMatch(match_id):
     try:
-        return matches.find_one({"match_id": match_id})
+        match = matches.find_one({"match_id": match_id})
+        if match is None:
+            return None
+        return _decrypt_nested_fields(match, {"bs_id"})
     except Exception as e:
         print(f"Error finding match {match_id}: {e}")
         return None
@@ -124,7 +218,8 @@ def deleteLock():
 # User Options
 def saveUser(user_options):
     try:
-        users.update_one({"discord_id": user_options["discord_id"], "guild_id": user_options["guild_id"]}, {"$set": user_options}, upsert=True)
+        payload = _encrypt_nested_fields(user_options, {"bs_id"})
+        users.update_one({"discord_id": user_options["discord_id"], "guild_id": user_options["guild_id"]}, {"$set": payload}, upsert=True)
         return True  # Erfolg
     except Exception as e:
         print(f"Error saving user {user_options['discord_id']}: {e}")
@@ -133,10 +228,13 @@ def saveUser(user_options):
 
 def findUserOptions(discord_id, guild_id):
     try:
-        return users.find_one({"discord_id": discord_id, "guild_id": guild_id}) or {
-            "discord_id": discord_id, "guild_id": guild_id, "bs_id": None, "region" : None, "elo": 0, "matches_played": 0,
-            "in_match": False, "winstreak": 0, "wins": 0, "rank" : None
-        }
+        user = users.find_one({"discord_id": discord_id, "guild_id": guild_id})
+        if user is None:
+            return {
+                "discord_id": discord_id, "guild_id": guild_id, "bs_id": None, "region" : None, "elo": 0, "matches_played": 0,
+                "in_match": False, "winstreak": 0, "wins": 0, "rank" : None
+            }
+        return _decrypt_nested_fields(user, {"bs_id"})
     except Exception as e:
         print(f"Error finding user {discord_id}: {e}")
         return None
