@@ -16,8 +16,7 @@ class ServerList(commands.Cog):
   
   def __init__(self, bot):
     self.bot = bot
-    if currentFolder() == "BMM":
-      self.serverList.start()
+    self.serverList.start()
 
 
   @tasks.loop(seconds=120)
