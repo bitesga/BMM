@@ -378,7 +378,7 @@ class BMM(commands.Bot):
     
     await asyncio.sleep(3)
       
-    await generalChannel.send("Hi, please make sure to put my role 'Brawl Matchmaking' as high as possible in the role list, so that I can edit member roles.",
+    await generalChannel.send(f"Hi, please make sure to put my role {guild.me.top_role.mention} as high as possible in the role list, so that I can edit member roles.",
     file=discord.File(f"tutorialPhotos/rolelist.png"))
     
     await asyncio.sleep(3)
